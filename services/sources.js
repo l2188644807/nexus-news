@@ -6,6 +6,17 @@
 const SOURCES = [
   // ================= 1. 电竞模块 =================
   {
+    id: 's16_worlds',
+    name: '2026英雄联盟全球总决赛 (S16)',
+    category: 'esports',
+    categoryLabel: '实时电竞',
+    type: 's16_feed',
+    url: 'https://lolesports.com/',
+    icon: 'crown',
+    badge: 'S16全球总决赛',
+    lang: 'zh'
+  },
+  {
     id: 'wanplus',
     name: '玩加电竞 (Score)',
     category: 'esports',
@@ -659,6 +670,28 @@ const SOURCES = [
 
   // ================= 8. 娱乐圈 =================
   {
+    id: 'bilibili',
+    name: '哔哩哔哩 (Bilibili)',
+    category: 'entertainment',
+    categoryLabel: '娱乐圈',
+    type: 'bilibili_api',
+    url: 'https://www.bilibili.com/',
+    icon: 'tv',
+    badge: 'B站热门/视频',
+    lang: 'zh'
+  },
+  {
+    id: 'douyin',
+    name: '抖音热榜 (Douyin)',
+    category: 'entertainment',
+    categoryLabel: '娱乐圈',
+    type: 'douyin_api',
+    url: 'https://www.douyin.com/',
+    icon: 'video',
+    badge: '抖音热榜/爆点',
+    lang: 'zh'
+  },
+  {
     id: 'sina_ent',
     name: '新浪娱乐',
     category: 'entertainment',
@@ -966,13 +999,13 @@ const SOURCES = [
 const CATEGORIES = [
   { id: 'all', label: '全部要闻', icon: 'flame', desc: '全网指定渠道聚合大信息流' },
   { id: 'astronomy', label: '天文学', icon: 'telescope', desc: 'NASA、ESA、ESO、国家天文台FAST、韦伯望远镜与深空物理' },
-  { id: 'esports', label: '实时电竞', icon: 'trophy', desc: '玩加、兔玩、Dot Esports、HLTV、Esports Insider、Liquipedia' },
+  { id: 'esports', label: '实时电竞', icon: 'trophy', desc: '2026英雄联盟全球总决赛(S16)、玩加、兔玩、Dot Esports、HLTV、Liquipedia' },
   { id: 'gaming', label: '游戏前沿', icon: 'gamepad-2', desc: '机核、NGA、游民星空/3DM、IGN、Eurogamer、GamesIndustry、Game Developer' },
   { id: 'world', label: '全球大事', icon: 'globe', desc: '新华网、人民网、央视新闻、路透社、美联社、BBC、半岛电视台' },
   { id: 'sports', label: '体育竞技', icon: 'activity', desc: '新体育网、虎扑、直播吧、ESPN、BBC Sport、The Athletic、Motorsport' },
   { id: 'military', label: '军事防务', icon: 'shield', desc: '中国军网、国防部网、观察者网、Defense News、TWZ、Janes、Breaking Defense、ISW' },
   { id: 'education', label: '教育资讯', icon: 'graduation-cap', desc: '中国教育在线、教育部官网、学堂在线、THE、Inside Higher Ed、Education Week、Nature' },
-  { id: 'entertainment', label: '娱乐圈', icon: 'sparkles', desc: '新浪娱乐、豆瓣娱乐、Variety、Deadline、THR、People' },
+  { id: 'entertainment', label: '娱乐圈', icon: 'sparkles', desc: '抖音热榜、哔哩哔哩热门、新浪娱乐、豆瓣娱乐、Variety、Deadline' },
   { id: 'cinema', label: '影视文化', icon: 'clapperboard', desc: '豆瓣电影、1905电影网、IndieWire、Sight and Sound、RogerEbert、Criterion' },
   { id: 'finance', label: '财经商业', icon: 'trending-up', desc: '财新网、第一财经、东方财富、Bloomberg、FT、CNBC、华尔街日报' },
   { id: 'tech', label: '科技前沿', icon: 'cpu', desc: '36氪、爱范儿、TechWeb、Ars Technica、MIT科技评论、The Verge、TechCrunch、IEEE' }

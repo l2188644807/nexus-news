@@ -278,6 +278,13 @@ createApp({
       refreshIcons();
     };
 
+    const quickFilterSource = (sourceId) => {
+      selectedSource.value = sourceId;
+      searchQuery.value = '';
+      selectedTag.value = '';
+      fetchNews(true);
+    };
+
     const copyLink = (link) => {
       navigator.clipboard.writeText(link || window.location.href);
       showToast('原文链接已复制到剪贴板！', 'success');
@@ -386,6 +393,7 @@ createApp({
       openArticle,
       closeArticle,
       copyLink,
+      quickFilterSource,
       toggleTheme
     };
   }

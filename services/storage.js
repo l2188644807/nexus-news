@@ -267,6 +267,22 @@ const CHANNEL_SEEDS = [
 
   // ================= 2. 电竞模块 =================
   {
+    id: 'seed-s16-1',
+    title: '【S16全球总决赛】瑞士轮BLG 2:1力克T1率先挺进八强：Bin贾克斯决胜团神级绕后切C，LPL一号种子全胜领跑',
+    summary: '2026英雄联盟全球总决赛瑞士轮2-0战绩池巅峰对决！双方鏖战三局，决胜局龙坑生死团中Bin贾克斯极限E闪晕住双C，带领队伍完成零换四一波推平基地，成为首支斩获八强淘汰赛门票的战队。',
+    link: 'https://lolesports.com/',
+    sourceId: 's16_worlds',
+    source: '2026英雄联盟全球总决赛 (S16)',
+    category: 'esports',
+    categoryLabel: '实时电竞',
+    pubDate: new Date(Date.now() - 4 * 60 * 1000).toISOString(),
+    timestamp: Date.now() - 4 * 60 * 1000,
+    tags: ['S16全球总决赛', 'BLG胜T1', 'Bin贾克斯', '瑞士轮出线', 'LPL一号种子'],
+    image: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600&auto=format&fit=crop&q=80',
+    isBreaking: true,
+    isHot: true
+  },
+  {
     id: 'seed-wanplus-1',
     title: '【玩加电竞】LPL转会期前瞻动向：各大战队选手合同库更新，核心双C动向引爆全网讨论',
     summary: '玩加赛事数据库今日同步各大联赛最新选手合同到期日，多名顶尖韩援与自由人选手已开启试训流程，转会期军备竞赛正式拉开序幕。',
@@ -432,6 +448,40 @@ const CHANNEL_SEEDS = [
     tags: ['国防部发布', '主权捍卫', '战备警戒'],
     image: 'https://images.unsplash.com/photo-1508614589041-895b88991e3e?w=600&auto=format&fit=crop&q=80',
     isBreaking: false,
+    isHot: true
+  },
+
+  // ================= 7. 热门流媒体与社媒前沿 =================
+  {
+    id: 'seed-bilibili-1',
+    title: '【B站热门】2026顶级神作先导预告曝光：数万弹幕刷屏膜拜，百万播放登顶全站日榜第一',
+    summary: '【B站热播 · 280万播放】UP主与游戏工作室联合发布全新实机深度演示，粒子特效与运镜设计引发全网热议，弹幕总量破10万。',
+    link: 'https://www.bilibili.com/',
+    sourceId: 'bilibili',
+    source: '哔哩哔哩 (Bilibili)',
+    category: 'entertainment',
+    categoryLabel: '娱乐圈',
+    pubDate: new Date(Date.now() - 12 * 60 * 1000).toISOString(),
+    timestamp: Date.now() - 12 * 60 * 1000,
+    tags: ['B站热门', '全站日榜第一', '实机演示', '百万播放', '哔哩哔哩'],
+    image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=80',
+    isBreaking: true,
+    isHot: true
+  },
+  {
+    id: 'seed-douyin-1',
+    title: '【抖音热榜 Top 1】[爆] 2026年英雄联盟全球总决赛赛况与全网焦点狂欢',
+    summary: '抖音实时热点聚焦榜第 1 位 [爆]，当前全网搜索热度指数突破 1280.5万。各大主播与解说现场连麦深度复盘，赛事话题播放量已达数亿次。',
+    link: 'https://www.douyin.com/',
+    sourceId: 'douyin',
+    source: '抖音热榜 (Douyin)',
+    category: 'entertainment',
+    categoryLabel: '娱乐圈',
+    pubDate: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+    timestamp: Date.now() - 5 * 60 * 1000,
+    tags: ['抖音热榜', '#S16全球总决赛', 'Top1', '实时热搜', '全网爆点'],
+    image: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&auto=format&fit=crop&q=80',
+    isBreaking: true,
     isHot: true
   }
 ];

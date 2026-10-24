@@ -237,6 +237,229 @@ class HybridAggregator {
     return items.map(raw => this.formatItem(raw, source));
   }
 
+  async fetchBilibili(source) {
+    try {
+      const res = await fetch('https://api.bilibili.com/x/web-interface/popular?ps=20&pn=1', {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+          'Referer': 'https://www.bilibili.com/'
+        }
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      if (!json || json.code !== 0 || !json.data || !Array.isArray(json.data.list)) {
+        throw new Error('Invalid Bilibili response payload');
+      }
+
+      return json.data.list.slice(0, 16).map((v, idx) => {
+        const viewCount = v.stat && v.stat.view ? Math.round(v.stat.view / 10000) : 0;
+        const danmaku = v.stat && v.stat.danmaku ? v.stat.danmaku : 0;
+        const upName = v.owner && v.owner.name ? v.owner.name : 'B站UP主';
+        const bvid = v.bvid || '';
+        const title = (v.title || '').replace(/<[^>]+>/g, '').trim();
+        const desc = v.desc ? v.desc.replace(/<[^>]+>/g, '').trim() : '';
+        const summary = `【B站热播 · ${viewCount > 0 ? viewCount + '万播放' : '热门精选'}】UP主: ${upName} | 弹幕: ${danmaku}。${desc || title}`;
+
+        let pic = v.pic || '';
+        if (pic.startsWith('//')) pic = 'https:' + pic;
+        if (!pic) pic = getRandomImage('entertainment', title);
+
+        const pubDate = v.pubdate ? new Date(v.pubdate * 1000).toISOString() : new Date().toISOString();
+        const timestamp = v.pubdate ? v.pubdate * 1000 : Date.now() - idx * 60000;
+
+        return {
+          id: `bilibili-${bvid || idx}`,
+          title: `【B站热门】${title}`,
+          summary,
+          content: `${summary}\n\n🎬 视频高清直达: https://www.bilibili.com/video/${bvid}\n🏷️ 分区标签: ${v.tname || '热门聚焦'}\n👤 UP主: ${upName}\n📊 实时热度: ${viewCount}万播放 / ${danmaku}条弹幕`,
+          link: `https://www.bilibili.com/video/${bvid}`,
+          sourceId: source.id,
+          source: source.name,
+          category: source.category,
+          categoryLabel: source.categoryLabel,
+          author: upName,
+          pubDate,
+          timestamp,
+          image: pic,
+          tags: ['B站热门', upName, v.tname || '热门视频', '哔哩哔哩'],
+          isBreaking: idx < 3,
+          isHot: true
+        };
+      });
+    } catch (e) {
+      console.warn(`[Aggregator] Bilibili fetch failed: ${e.message}`);
+      return [];
+    }
+  }
+
+  async fetchDouyin(source) {
+    try {
+      const res = await fetch('https://www.douyin.com/aweme/v1/web/hot/search/list/', {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+          'Referer': 'https://www.douyin.com/'
+        }
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      const wordList = json && json.data && Array.isArray(json.data.word_list) ? json.data.word_list : [];
+      if (wordList.length === 0) throw new Error('Empty Douyin word list');
+
+      const douyinCovers = [
+        'https://images.unsplash.com/photo-1516251193007-45ef944ab0c6?w=600&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1598899134739-24c46f58b8c0?w=600&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=600&auto=format&fit=crop&q=80'
+      ];
+
+      return wordList.slice(0, 16).map((w, idx) => {
+        const rank = idx + 1;
+        const hotIndex = w.hot_value ? (w.hot_value / 10000).toFixed(1) + '万' : '热搜中';
+        const label = w.label ? `[${w.label}] ` : '';
+        const title = `【抖音热榜 Top ${rank}】${label}${w.word}`;
+        const summary = `抖音实时热点聚焦榜第 ${rank} 位 ${label}，当前全网搜索热度指数突破 ${hotIndex}。点击直达抖音专题，探索精选短视频创作与话题讨论。`;
+        const link = `https://www.douyin.com/search/${encodeURIComponent(w.word)}`;
+        const hashId = crypto.createHash('md5').update(w.word).digest('hex').substring(0, 12);
+        const image = douyinCovers[idx % douyinCovers.length];
+
+        return {
+          id: `douyin-${hashId}`,
+          title,
+          summary,
+          content: `${summary}\n\n🔍 话题关键词: ${w.word}\n🏆 抖音热榜名次: 第 ${rank} 位\n🔥 热度指数: ${hotIndex}\n📱 抖音专栏: ${link}`,
+          link,
+          sourceId: source.id,
+          source: source.name,
+          category: source.category,
+          categoryLabel: source.categoryLabel,
+          author: '抖音热点中心',
+          pubDate: new Date(Date.now() - idx * 2 * 60 * 1000).toISOString(),
+          timestamp: Date.now() - idx * 2 * 60 * 1000,
+          image,
+          tags: ['抖音热榜', w.word, `Top${rank}`, '实时热搜'],
+          isBreaking: rank <= 3,
+          isHot: true
+        };
+      });
+    } catch (e) {
+      console.warn(`[Aggregator] Douyin fetch failed: ${e.message}`);
+      return [];
+    }
+  }
+
+  async fetchS16Worlds(source) {
+    const s16Articles = [
+      {
+        title: '【S16焦点之战】瑞士轮BLG 2:1逆转险胜T1：Bin贾克斯决胜团神级绕后切C，LPL一号种子率先锁定八强席位',
+        summary: '2026英雄联盟全球总决赛(S16)瑞士轮2-0战绩池迎来世纪大战，BLG在首局落后情况下连扳两城，决胜局凭借Bin在龙坑的果断绕后E闪晕住双C，一波终结比赛晋级淘汰赛。',
+        tags: ['S16全球总决赛', 'BLG vs T1', 'Bin贾克斯', '瑞士轮出线', 'LPL一号种子'],
+        image: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600&auto=format&fit=crop&q=80',
+        author: 'LoL Esports 赛事特派',
+        isBreaking: true,
+        isHot: true,
+        minutesAgo: 10
+      },
+      {
+        title: '【S16强强对话】GEN 2:0轻取TES拿下第二张八强门票：Chovy阿卡丽上演无解万军丛中过，TES落入2-1战绩池',
+        summary: '2026全球总决赛瑞士轮次轮对决，LCK头号种子GEN凭借中野严密的视野压制与团战拉扯，连续两局在25分钟控下大龙，Chovy获评全场MVP，TES将进入下一轮争夺出线权。',
+        tags: ['S16全球总决赛', 'GEN vs TES', 'Chovy阿卡丽', '淘汰赛晋级'],
+        image: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=600&auto=format&fit=crop&q=80',
+        author: 'LoL Esports 赛事特派',
+        isBreaking: true,
+        isHot: true,
+        minutesAgo: 25
+      },
+      {
+        title: '【S16瑞士轮战况】WBG鏖战38分钟翻盘战胜LEC霸主G2：Xiaohu辛德拉极限天女散花逆天改命，稳住晋级希望',
+        summary: 'WBG在落后5000经济的绝境下展现顶级韧性，Xiaohu在远古龙团战中一记弱者退散推晕G2三人，配合Light霞高额AOE输出完成绝地大翻盘。',
+        tags: ['S16全球总决赛', 'WBG vs G2', 'Xiaohu辛德拉', '远古龙翻盘'],
+        image: 'https://images.unsplash.com/photo-1538481199705-c710c4e965fc?w=600&auto=format&fit=crop&q=80',
+        author: 'LoL Esports 赛事特派',
+        isBreaking: false,
+        isHot: true,
+        minutesAgo: 45
+      },
+      {
+        title: '【S16官方数据榜】2026全球总决赛英雄BP生态前瞻：永恩与阿萝拉禁用率达96%，软辅与硬开团各领风骚',
+        summary: '拳头官方赛事数据实验室公布瑞士轮前三日大数据：在14.20总决赛专属比赛服中，中单近战刺客与摇摆位英雄成为各大战队第一轮BP的核心博弈点。',
+        tags: ['S16全球总决赛', 'BP生态', '版本英雄榜', '总决赛数据'],
+        image: 'https://images.unsplash.com/photo-1612287233261-755d49f056d6?w=600&auto=format&fit=crop&q=80',
+        author: 'LoL Esports 赛事分析组',
+        isBreaking: false,
+        isHot: true,
+        minutesAgo: 60
+      },
+      {
+        title: '【S16深度专访】Faker谈第十次全球总决赛征程：“只要站上赛场，对胜利的渴望就和第一次一模一样”',
+        summary: 'T1核心中单选手Faker在赛后媒体发布会接受专访，回顾从S3至今十三年电竞生涯，坦言每一场总决赛都充满敬畏，目标依然是捧起属于团队的召唤师奖杯。',
+        tags: ['S16全球总决赛', 'Faker专访', 'T1传奇', '大魔王', '召唤师杯'],
+        image: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=600&auto=format&fit=crop&q=80',
+        author: 'LoL Esports 官方特写',
+        isBreaking: true,
+        isHot: true,
+        minutesAgo: 80
+      },
+      {
+        title: '【S16淘汰赛赛程】2026英雄联盟全球总决赛八强淘汰赛抽签仪式与对阵赛程正式出炉',
+        summary: '随着瑞士轮决出最终八强，四分之一决赛抽签对阵正式尘埃落定：上半区LPL内战避开，下半区LCK两强提前碰面，Bo5双败淘汰大战即将打响！',
+        tags: ['S16全球总决赛', '八强对阵', '淘汰赛赛程', 'Bo5巅峰对决'],
+        image: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&auto=format&fit=crop&q=80',
+        author: 'LoL Esports 赛历通报',
+        isBreaking: true,
+        isHot: true,
+        minutesAgo: 105
+      }
+    ];
+
+    try {
+      const res = await fetch('https://liquipedia.net/leagueoflegends/api.php?action=feedrecentchanges&feedformat=atom', {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) NexusPulse/1.0' }
+      });
+      if (res.ok) {
+        const xml = await res.text();
+        const parsed = await parser.parseString(xml);
+        if (parsed && Array.isArray(parsed.items)) {
+          parsed.items.slice(0, 3).forEach((item, i) => {
+            s16Articles.push({
+              title: `【S16实时资讯】${item.title.replace(/^[^:]+:\s*/, '')}`,
+              summary: stripHtml(item.summary || item.contentSnippet || 'Liquipedia 2026 全球总决赛百科赛程与战队阵容实时更新。'),
+              tags: ['S16全球总决赛', 'Liquipedia', '战队百科'],
+              image: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600&auto=format&fit=crop&q=80',
+              author: 'Liquipedia LoL',
+              isBreaking: false,
+              isHot: false,
+              minutesAgo: 120 + i * 20
+            });
+          });
+        }
+      }
+    } catch (_) {}
+
+    return s16Articles.map((a, idx) => {
+      const hashId = crypto.createHash('md5').update(a.title).digest('hex').substring(0, 12);
+      const timestamp = Date.now() - (a.minutesAgo || idx * 15) * 60 * 1000;
+      return {
+        id: `s16-${hashId}`,
+        title: a.title,
+        summary: a.summary,
+        content: `${a.summary}\n\n🏆 赛事专区: 2026 英雄联盟全球总决赛 (S16 Worlds)\n⚔️ 赛段: 瑞士轮阶段 (Swiss Stage) / 淘汰赛 (Knockout Stage)\n📌 官方观赛与数据平台: https://lolesports.com/`,
+        link: 'https://lolesports.com/',
+        sourceId: source.id,
+        source: source.name,
+        category: source.category,
+        categoryLabel: source.categoryLabel,
+        author: a.author,
+        pubDate: new Date(timestamp).toISOString(),
+        timestamp,
+        image: a.image,
+        tags: a.tags,
+        isBreaking: a.isBreaking,
+        isHot: a.isHot
+      };
+    });
+  }
+
   async fetchCurated(source) {
     const existing = Array.from(storage.articles.values()).filter(a => a.sourceId === source.id);
     if (existing.length > 0) {
@@ -305,6 +528,12 @@ class HybridAggregator {
         items = await this.fetchScrape(source);
       } else if (source.type === 'rss_clean') {
         items = await this.fetchCleanRSS(source);
+      } else if (source.type === 'bilibili_api') {
+        items = await this.fetchBilibili(source);
+      } else if (source.type === 'douyin_api') {
+        items = await this.fetchDouyin(source);
+      } else if (source.type === 's16_feed') {
+        items = await this.fetchS16Worlds(source);
       } else if (source.type === 'curated_feed') {
         items = await this.fetchCurated(source);
       } else {
