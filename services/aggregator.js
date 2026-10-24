@@ -348,109 +348,6 @@ class HybridAggregator {
     }
   }
 
-  async fetchS16Worlds(source) {
-    const s16Articles = [
-      {
-        title: '【LoL官方专题】拳头游戏发布全球总决赛国际赛历：全新赛制演进与各大赛区名额分配规划公布',
-        summary: '拳头游戏官方电竞赛事组正式公布全球总决赛路线图，重点介绍全新三大国际赛事窗口、瑞士轮赛制优化以及全局BP（Fearless Draft）在各大职业联赛中的推行规划。',
-        tags: ['全球总决赛', 'LoL Esports', '赛制规划', '赛区名额', '拳头官方'],
-        image: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600&auto=format&fit=crop&q=80',
-        author: 'LoL Esports 官方通报',
-        isBreaking: true,
-        isHot: true,
-        minutesAgo: 10
-      },
-      {
-        title: '【职业联赛动态】各大赛区转会期阵容与选手合同库更新：各大豪门战队引援备战全球总决赛席位',
-        summary: '全球各大赛区（LPL、LCK、LEC、LCS）转会期动向持续升温，选手合同数据库与试训名单持续更新，各大战力榜单与教练组重组成为全网电竞社区热议焦点。',
-        tags: ['选手转会', '战队名单', '合同库', '全球总决赛席位'],
-        image: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=600&auto=format&fit=crop&q=80',
-        author: 'LoL 赛事特派',
-        isBreaking: true,
-        isHot: true,
-        minutesAgo: 30
-      },
-      {
-        title: '【竞技版本前瞻】召唤师峡谷竞技平衡与比赛服改动深度解析：强化对线博弈与野区资源争夺',
-        summary: '拳头游戏玩法设计团队发布最新赛事服补丁前瞻，针对比赛节奏、战略点机制及核心装备进行系统性数值调优，旨在激发更多样化的战术流派与对局对抗。',
-        tags: ['版本解析', '比赛服补丁', '竞技平衡', '战术BP'],
-        image: 'https://images.unsplash.com/photo-1612287233261-755d49f056d6?w=600&auto=format&fit=crop&q=80',
-        author: '拳头玩法实验室',
-        isBreaking: false,
-        isHot: true,
-        minutesAgo: 60
-      },
-      {
-        title: '【全球总决赛史话】历届英雄联盟全球总决赛经典战役与冠军数据盘点：从召唤师杯到传奇殿堂',
-        summary: '回顾历届全球总决赛的高光对局与战术革命，深入分析中韩赛区风格演化、明星选手荣誉榜以及影响深远的决胜局BP选择。',
-        tags: ['全球总决赛历史', '传奇殿堂', '总决赛经典', '召唤师杯'],
-        image: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=600&auto=format&fit=crop&q=80',
-        author: 'LoL Esports 深度专栏',
-        isBreaking: false,
-        isHot: true,
-        minutesAgo: 90
-      }
-    ];
-
-    try {
-      const res = await fetch('https://liquipedia.net/leagueoflegends/api.php?action=feedrecentchanges&feedformat=atom', {
-        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) NexusPulse/1.0' }
-      });
-      if (res.ok) {
-        const xml = await res.text();
-        const parsed = await parser.parseString(xml);
-        if (parsed && Array.isArray(parsed.items)) {
-          parsed.items.slice(0, 4).forEach((item, i) => {
-            const cleanTitle = (item.title || '').replace(/^[^:]+:\s*/, '').trim();
-            if (cleanTitle) {
-              s16Articles.push({
-                title: `【Liquipedia赛讯】${cleanTitle}`,
-                summary: stripHtml(item.summary || item.contentSnippet || 'Liquipedia 英雄联盟职业赛程、战队百科与最新赛事数据更新。'),
-                tags: ['职业赛讯', 'Liquipedia', '战队数据'],
-                image: 'https://images.unsplash.com/photo-1538481199705-c710c4e965fc?w=600&auto=format&fit=crop&q=80',
-                author: 'Liquipedia LoL',
-                isBreaking: false,
-                isHot: false,
-                minutesAgo: 110 + i * 20
-              });
-            }
-          });
-        }
-      }
-    } catch (_) {}
-
-    return s16Articles.map((a, idx) => {
-      const hashId = crypto.createHash('md5').update(a.title).digest('hex').substring(0, 12);
-      const timestamp = Date.now() - (a.minutesAgo || idx * 15) * 60 * 1000;
-      return {
-        id: `s16-${hashId}`,
-        title: a.title,
-        summary: a.summary,
-        content: `${a.summary}\n\n🏆 赛事专区: 英雄联盟全球总决赛 (LoL Worlds Tracker)\n📌 官方观赛与数据平台: https://lolesports.com/`,
-        link: 'https://lolesports.com/',
-        sourceId: source.id,
-        source: source.name,
-        category: source.category,
-        categoryLabel: source.categoryLabel,
-        author: a.author,
-        pubDate: new Date(timestamp).toISOString(),
-        timestamp,
-        image: a.image,
-        tags: a.tags,
-        isBreaking: a.isBreaking,
-        isHot: a.isHot
-      };
-    });
-  }
-
-  async fetchCurated(source) {
-    const existing = Array.from(storage.articles.values()).filter(a => a.sourceId === source.id);
-    if (existing.length > 0) {
-      return existing.slice(0, 8);
-    }
-    return [];
-  }
-
   formatItem(raw, source) {
     const uniqueKey = raw.link || raw.guid || raw.title;
     const hashId = crypto.createHash('md5').update(uniqueKey).digest('hex').substring(0, 16);
@@ -515,10 +412,6 @@ class HybridAggregator {
         items = await this.fetchBilibili(source);
       } else if (source.type === 'douyin_api') {
         items = await this.fetchDouyin(source);
-      } else if (source.type === 's16_feed') {
-        items = await this.fetchS16Worlds(source);
-      } else if (source.type === 'curated_feed') {
-        items = await this.fetchCurated(source);
       } else {
         items = await this.fetchRSS(source);
       }
