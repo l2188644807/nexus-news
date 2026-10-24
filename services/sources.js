@@ -1,0 +1,811 @@
+/**
+ * 智讯枢纽 (NEXUS PULSE) 专属定制多源矩阵
+ * 严格按照用户指定渠道配置，覆盖 10 大核心垂直板块
+ */
+
+const SOURCES = [
+  // ================= 1. 电竞模块 =================
+  // 玩加电竞（Score），兔玩网，Dot esports，HLTV, Esports Insider，Liquipedia
+  {
+    id: 'wanplus',
+    name: '玩加电竞 (Score)',
+    category: 'esports',
+    categoryLabel: '实时电竞',
+    type: 'scrape',
+    url: 'https://www.wanplus.com/',
+    icon: 'trophy',
+    badge: '赛况/数据',
+    lang: 'zh'
+  },
+  {
+    id: 'tuwan',
+    name: '兔玩网',
+    category: 'esports',
+    categoryLabel: '实时电竞',
+    type: 'scrape',
+    url: 'https://www.tuwan.com/',
+    icon: 'crosshair',
+    badge: '战队/集锦',
+    lang: 'zh'
+  },
+  {
+    id: 'dotesports',
+    name: 'Dot Esports',
+    category: 'esports',
+    categoryLabel: '实时电竞',
+    type: 'rss_clean',
+    url: 'https://dotesports.com/feed',
+    icon: 'flame',
+    badge: 'LoL/瓦罗兰特',
+    lang: 'en'
+  },
+  {
+    id: 'hltv',
+    name: 'HLTV',
+    category: 'esports',
+    categoryLabel: '实时电竞',
+    type: 'curated_feed',
+    url: 'https://www.hltv.org',
+    icon: 'target',
+    badge: 'CS2全球权威',
+    lang: 'en'
+  },
+  {
+    id: 'esportsinsider',
+    name: 'Esports Insider',
+    category: 'esports',
+    categoryLabel: '实时电竞',
+    type: 'rss',
+    url: 'https://esportsinsider.com/feed',
+    icon: 'award',
+    badge: '职业联盟/转会',
+    lang: 'en'
+  },
+  {
+    id: 'liquipedia',
+    name: 'Liquipedia',
+    category: 'esports',
+    categoryLabel: '实时电竞',
+    type: 'rss',
+    url: 'https://liquipedia.net/commons/api.php?action=feedrecentchanges&feedformat=atom',
+    icon: 'layers',
+    badge: '百科/赛程对阵',
+    lang: 'en'
+  },
+
+  // ================= 2. 游戏前沿 =================
+  // 机核Gcores，NGA, 游民星空/3DM, IGN, Eurogamer, Gamesindustry.biz, Game Developer
+  {
+    id: 'gcores',
+    name: '机核 Gcores',
+    category: 'gaming',
+    categoryLabel: '游戏前沿',
+    type: 'rss',
+    url: 'https://www.gcores.com/rss',
+    icon: 'sparkles',
+    badge: '主机文化/深度',
+    lang: 'zh'
+  },
+  {
+    id: 'nga',
+    name: 'NGA 玩家社区',
+    category: 'gaming',
+    categoryLabel: '游戏前沿',
+    type: 'scrape',
+    url: 'https://bbs.nga.cn/',
+    icon: 'message-square',
+    badge: '硬核玩家/攻略',
+    lang: 'zh'
+  },
+  {
+    id: 'gamersky_3dm',
+    name: '游民星空 / 3DM',
+    category: 'gaming',
+    categoryLabel: '游戏前沿',
+    type: 'scrape',
+    url: 'https://www.gamersky.com/news/',
+    icon: 'gamepad-2',
+    badge: '新游特惠/实机',
+    lang: 'zh'
+  },
+  {
+    id: 'ign',
+    name: 'IGN',
+    category: 'gaming',
+    categoryLabel: '游戏前沿',
+    type: 'rss',
+    url: 'https://feeds.feedburner.com/ign/all',
+    icon: 'flame',
+    badge: '全球第一评测',
+    lang: 'en'
+  },
+  {
+    id: 'eurogamer',
+    name: 'Eurogamer',
+    category: 'gaming',
+    categoryLabel: '游戏前沿',
+    type: 'rss',
+    url: 'https://www.eurogamer.net/feed',
+    icon: 'compass',
+    badge: '欧洲权威评测',
+    lang: 'en'
+  },
+  {
+    id: 'gamesindustry',
+    name: 'GamesIndustry.biz',
+    category: 'gaming',
+    categoryLabel: '游戏前沿',
+    type: 'rss',
+    url: 'https://www.gamesindustry.biz/feed',
+    icon: 'trending-up',
+    badge: '全球游戏产业',
+    lang: 'en'
+  },
+  {
+    id: 'gamedeveloper',
+    name: 'Game Developer',
+    category: 'gaming',
+    categoryLabel: '游戏前沿',
+    type: 'rss',
+    url: 'https://www.gamedeveloper.com/rss.xml',
+    icon: 'code-2',
+    badge: '引擎/开发设计',
+    lang: 'en'
+  },
+
+  // ================= 3. 全球大事 =================
+  // 新华网，人民网 ，央视新闻网，Reuters（路透社），Associated Press（美联社），BBC News，AI Jazeera English
+  {
+    id: 'xinhua',
+    name: '新华网',
+    category: 'world',
+    categoryLabel: '全球大事',
+    type: 'rss',
+    url: 'http://www.xinhuanet.com/world/news_world.xml',
+    icon: 'globe',
+    badge: '国家通讯社',
+    lang: 'zh'
+  },
+  {
+    id: 'people',
+    name: '人民网',
+    category: 'world',
+    categoryLabel: '全球大事',
+    type: 'rss',
+    url: 'http://www.people.com.cn/rss/world.xml',
+    icon: 'newspaper',
+    badge: '权威要闻',
+    lang: 'zh'
+  },
+  {
+    id: 'cctv_news',
+    name: '央视新闻网',
+    category: 'world',
+    categoryLabel: '全球大事',
+    type: 'scrape',
+    url: 'http://news.cctv.com/',
+    icon: 'tv',
+    badge: '总台时政独家',
+    lang: 'zh'
+  },
+  {
+    id: 'reuters',
+    name: 'Reuters (路透社)',
+    category: 'world',
+    categoryLabel: '全球大事',
+    type: 'curated_feed',
+    url: 'https://www.reuters.com',
+    icon: 'zap',
+    badge: '国际快讯头条',
+    lang: 'en'
+  },
+  {
+    id: 'ap_news',
+    name: 'Associated Press (美联社)',
+    category: 'world',
+    categoryLabel: '全球大事',
+    type: 'curated_feed',
+    url: 'https://apnews.com',
+    icon: 'radio',
+    badge: '全球独立快讯',
+    lang: 'en'
+  },
+  {
+    id: 'bbc_news',
+    name: 'BBC News',
+    category: 'world',
+    categoryLabel: '全球大事',
+    type: 'rss',
+    url: 'https://feeds.bbci.co.uk/news/world/rss.xml',
+    icon: 'globe-2',
+    badge: '国际权威视点',
+    lang: 'en'
+  },
+  {
+    id: 'aljazeera',
+    name: 'Al Jazeera English',
+    category: 'world',
+    categoryLabel: '全球大事',
+    type: 'rss',
+    url: 'https://www.aljazeera.com/xml/rss/all.xml',
+    icon: 'send',
+    badge: '半岛全球视点',
+    lang: 'en'
+  },
+
+  // ================= 4. 体育竞技 =================
+  // 新体育网（官方），虎扑，直播吧，ESPN, BBC Sport，The Athletic，Motorsport.com
+  {
+    id: 'sports_cn',
+    name: '新体育网 (官方)',
+    category: 'sports',
+    categoryLabel: '体育竞技',
+    type: 'scrape',
+    url: 'http://www.sports.cn/',
+    icon: 'activity',
+    badge: '国家体育总局',
+    lang: 'zh'
+  },
+  {
+    id: 'hupu',
+    name: '虎扑体育',
+    category: 'sports',
+    categoryLabel: '体育竞技',
+    type: 'scrape',
+    url: 'https://m.hupu.com/',
+    icon: 'flame',
+    badge: 'NBA/欧冠专区',
+    lang: 'zh'
+  },
+  {
+    id: 'zhibo8',
+    name: '直播吧',
+    category: 'sports',
+    categoryLabel: '体育竞技',
+    type: 'scrape',
+    url: 'https://news.zhibo8.com/',
+    icon: 'play-circle',
+    badge: '实时比分战报',
+    lang: 'zh'
+  },
+  {
+    id: 'espn',
+    name: 'ESPN',
+    category: 'sports',
+    categoryLabel: '体育竞技',
+    type: 'curated_feed',
+    url: 'https://www.espn.com',
+    icon: 'award',
+    badge: '美职篮/世界体坛',
+    lang: 'en'
+  },
+  {
+    id: 'bbc_sport',
+    name: 'BBC Sport',
+    category: 'sports',
+    categoryLabel: '体育竞技',
+    type: 'rss',
+    url: 'https://feeds.bbci.co.uk/sport/rss.xml',
+    icon: 'medal',
+    badge: '英超/五大联赛',
+    lang: 'en'
+  },
+  {
+    id: 'the_athletic',
+    name: 'The Athletic',
+    category: 'sports',
+    categoryLabel: '体育竞技',
+    type: 'curated_feed',
+    url: 'https://theathletic.com',
+    icon: 'shield',
+    badge: '深度战术剖析',
+    lang: 'en'
+  },
+  {
+    id: 'motorsport',
+    name: 'Motorsport.com',
+    category: 'sports',
+    categoryLabel: '体育竞技',
+    type: 'rss',
+    url: 'https://www.motorsport.com/rss/f1/news/',
+    icon: 'gauge',
+    badge: 'F1/世界赛车',
+    lang: 'en'
+  },
+
+  // ================= 5. 军事防务 =================
+  // 中国军网（81.cn），国防部网（Mod.gov.cn)，观察者网军事板块，Defense News, The War Zone(TWZ), Janes, Breaking Defense, Institute for the Study of War(ISW)
+  {
+    id: 'mil_81',
+    name: '中国军网 (81.cn)',
+    category: 'military',
+    categoryLabel: '军事防务',
+    type: 'scrape',
+    url: 'http://www.81.cn/',
+    icon: 'shield',
+    badge: '解放军官方网',
+    lang: 'zh'
+  },
+  {
+    id: 'mod_gov',
+    name: '国防部网 (mod.gov.cn)',
+    category: 'military',
+    categoryLabel: '军事防务',
+    type: 'scrape',
+    url: 'http://www.mod.gov.cn/',
+    icon: 'shield-alert',
+    badge: '国防部权威发布',
+    lang: 'zh'
+  },
+  {
+    id: 'guancha_mil',
+    name: '观察者网军事板块',
+    category: 'military',
+    categoryLabel: '军事防务',
+    type: 'scrape',
+    url: 'https://www.guancha.cn/military-affairs',
+    icon: 'crosshair',
+    badge: '深防务战略',
+    lang: 'zh'
+  },
+  {
+    id: 'defense_news',
+    name: 'Defense News',
+    category: 'military',
+    categoryLabel: '军事防务',
+    type: 'rss',
+    url: 'https://www.defensenews.com/arc/outboundfeeds/rss/',
+    icon: 'flag',
+    badge: '全球军工防务',
+    lang: 'en'
+  },
+  {
+    id: 'twz',
+    name: 'The War Zone (TWZ)',
+    category: 'military',
+    categoryLabel: '军事防务',
+    type: 'rss',
+    url: 'https://www.twz.com/feed',
+    icon: 'radar',
+    badge: '战机/无人尖端',
+    lang: 'en'
+  },
+  {
+    id: 'janes',
+    name: 'Janes 防务情报',
+    category: 'military',
+    categoryLabel: '军事防务',
+    type: 'curated_feed',
+    url: 'https://www.janes.com',
+    icon: 'search',
+    badge: '全球防务装备库',
+    lang: 'en'
+  },
+  {
+    id: 'breaking_defense',
+    name: 'Breaking Defense',
+    category: 'military',
+    categoryLabel: '军事防务',
+    type: 'curated_feed',
+    url: 'https://breakingdefense.com',
+    icon: 'alert-triangle',
+    badge: '尖端战力/军火',
+    lang: 'en'
+  },
+  {
+    id: 'isw',
+    name: 'Institute for the Study of War (ISW)',
+    category: 'military',
+    categoryLabel: '军事防务',
+    type: 'curated_feed',
+    url: 'https://www.understandingwar.org',
+    icon: 'map-pin',
+    badge: '战局动态沙盘',
+    lang: 'en'
+  },
+
+  // ================= 6. 教育资讯 =================
+  // 中国教育在线，教育部官网（moe.gov.cn)，学堂在线，Times Higher Education(THE), Inside Higher Ed, Education Week, Nature
+  {
+    id: 'eol',
+    name: '中国教育在线',
+    category: 'education',
+    categoryLabel: '教育资讯',
+    type: 'scrape',
+    url: 'https://www.eol.cn/',
+    icon: 'graduation-cap',
+    badge: '高考研招报考',
+    lang: 'zh'
+  },
+  {
+    id: 'moe_gov',
+    name: '教育部官网 (moe.gov.cn)',
+    category: 'education',
+    categoryLabel: '教育资讯',
+    type: 'scrape',
+    url: 'http://www.moe.gov.cn/',
+    icon: 'book-open',
+    badge: '国家教育政策',
+    lang: 'zh'
+  },
+  {
+    id: 'xuetangx',
+    name: '学堂在线',
+    category: 'education',
+    categoryLabel: '教育资讯',
+    type: 'curated_feed',
+    url: 'https://www.xuetangx.com/',
+    icon: 'laptop',
+    badge: '高校MOOC学术',
+    lang: 'zh'
+  },
+  {
+    id: 'the_higher_ed',
+    name: 'Times Higher Education (THE)',
+    category: 'education',
+    categoryLabel: '教育资讯',
+    type: 'curated_feed',
+    url: 'https://www.timeshighereducation.com',
+    icon: 'award',
+    badge: '全球大学排名',
+    lang: 'en'
+  },
+  {
+    id: 'inside_higher_ed',
+    name: 'Inside Higher Ed',
+    category: 'education',
+    categoryLabel: '教育资讯',
+    type: 'curated_feed',
+    url: 'https://www.insidehighered.com',
+    icon: 'library',
+    badge: '高等教育深度',
+    lang: 'en'
+  },
+  {
+    id: 'education_week',
+    name: 'Education Week',
+    category: 'education',
+    categoryLabel: '教育资讯',
+    type: 'rss',
+    url: 'https://www.edweek.org/rss',
+    icon: 'file-text',
+    badge: 'K12与基础教育',
+    lang: 'en'
+  },
+  {
+    id: 'nature_edu',
+    name: 'Nature (自然)',
+    category: 'education',
+    categoryLabel: '教育资讯',
+    type: 'rss',
+    url: 'https://www.nature.com/nature.rss',
+    icon: 'microscope',
+    badge: '全球科研突破',
+    lang: 'en'
+  },
+
+  // ================= 7. 娱乐圈 =================
+  // 新浪娱乐，豆瓣小组/豆瓣娱乐，Variety, Deadline, The Hollywood Reporter(THR), People
+  {
+    id: 'sina_ent',
+    name: '新浪娱乐',
+    category: 'entertainment',
+    categoryLabel: '娱乐圈',
+    type: 'scrape',
+    url: 'https://ent.sina.com.cn/',
+    icon: 'sparkles',
+    badge: '演艺动态/热搜',
+    lang: 'zh'
+  },
+  {
+    id: 'douban_ent',
+    name: '豆瓣小组 / 豆瓣娱乐',
+    category: 'entertainment',
+    categoryLabel: '娱乐圈',
+    type: 'scrape',
+    url: 'https://www.douban.com/group/explore',
+    icon: 'message-circle',
+    badge: '娱圈讨论/八卦',
+    lang: 'zh'
+  },
+  {
+    id: 'variety_ent',
+    name: 'Variety',
+    category: 'entertainment',
+    categoryLabel: '娱乐圈',
+    type: 'rss',
+    url: 'https://variety.com/feed/',
+    icon: 'star',
+    badge: '好莱坞星闻',
+    lang: 'en'
+  },
+  {
+    id: 'deadline_ent',
+    name: 'Deadline',
+    category: 'entertainment',
+    categoryLabel: '娱乐圈',
+    type: 'rss',
+    url: 'https://deadline.com/feed/',
+    icon: 'flame',
+    badge: '好莱坞爆料独家',
+    lang: 'en'
+  },
+  {
+    id: 'thr_ent',
+    name: 'The Hollywood Reporter (THR)',
+    category: 'entertainment',
+    categoryLabel: '娱乐圈',
+    type: 'rss',
+    url: 'https://www.hollywoodreporter.com/feed/',
+    icon: 'film',
+    badge: '演艺名流',
+    lang: 'en'
+  },
+  {
+    id: 'people_mag',
+    name: 'People',
+    category: 'entertainment',
+    categoryLabel: '娱乐圈',
+    type: 'curated_feed',
+    url: 'https://people.com',
+    icon: 'heart',
+    badge: '人物周刊',
+    lang: 'en'
+  },
+
+  // ================= 8. 影视文化 =================
+  // 豆瓣电影，1905电影网(央视电影官方），IndieWire, Sight and Sound, RogerEbert.com, The Criterion Collection
+  {
+    id: 'douban_movie',
+    name: '豆瓣电影',
+    category: 'cinema',
+    categoryLabel: '影视文化',
+    type: 'scrape',
+    url: 'https://movie.douban.com/',
+    icon: 'clapperboard',
+    badge: '豆瓣评分/影评',
+    lang: 'zh'
+  },
+  {
+    id: 'cctv_1905',
+    name: '1905电影网 (央视电影官方)',
+    category: 'cinema',
+    categoryLabel: '影视文化',
+    type: 'scrape',
+    url: 'https://www.1905.com/news/',
+    icon: 'video',
+    badge: '央视电影频道',
+    lang: 'zh'
+  },
+  {
+    id: 'indiewire',
+    name: 'IndieWire',
+    category: 'cinema',
+    categoryLabel: '影视文化',
+    type: 'rss',
+    url: 'https://www.indiewire.com/feed/',
+    icon: 'camera',
+    badge: '独立电影/国际影节',
+    lang: 'en'
+  },
+  {
+    id: 'sight_and_sound',
+    name: 'Sight and Sound',
+    category: 'cinema',
+    categoryLabel: '影视文化',
+    type: 'curated_feed',
+    url: 'https://www.bfi.org.uk/sight-and-sound',
+    icon: 'eye',
+    badge: '英国电影协会BFI',
+    lang: 'en'
+  },
+  {
+    id: 'roger_ebert',
+    name: 'RogerEbert.com',
+    category: 'cinema',
+    categoryLabel: '影视文化',
+    type: 'rss',
+    url: 'https://www.rogerebert.com/feed',
+    icon: 'thumbs-up',
+    badge: '普利策影评名家',
+    lang: 'en'
+  },
+  {
+    id: 'criterion',
+    name: 'The Criterion Collection',
+    category: 'cinema',
+    categoryLabel: '影视文化',
+    type: 'curated_feed',
+    url: 'https://www.criterion.com',
+    icon: 'disc',
+    badge: '大师经典电影库',
+    lang: 'en'
+  },
+
+  // ================= 9. 财经商业 =================
+  // 财新网，第一财经，东方财富网，Bloomberg, Financial Times, CNBC, The Wall Street Journal (华尔街日报)
+  {
+    id: 'caixin',
+    name: '财新网',
+    category: 'finance',
+    categoryLabel: '财经商业',
+    type: 'scrape',
+    url: 'https://www.caixin.com/',
+    icon: 'trending-up',
+    badge: '财新深度调查',
+    lang: 'zh'
+  },
+  {
+    id: 'yicai',
+    name: '第一财经',
+    category: 'finance',
+    categoryLabel: '财经商业',
+    type: 'scrape',
+    url: 'https://www.yicai.com/',
+    icon: 'bar-chart-2',
+    badge: '中国商业电视',
+    lang: 'zh'
+  },
+  {
+    id: 'eastmoney',
+    name: '东方财富网',
+    category: 'finance',
+    categoryLabel: '财经商业',
+    type: 'scrape',
+    url: 'https://finance.eastmoney.com/',
+    icon: 'pie-chart',
+    badge: 'A股大盘/基金',
+    lang: 'zh'
+  },
+  {
+    id: 'bloomberg',
+    name: 'Bloomberg (彭博社)',
+    category: 'finance',
+    categoryLabel: '财经商业',
+    type: 'curated_feed',
+    url: 'https://www.bloomberg.com',
+    icon: 'dollar-sign',
+    badge: '全球金融终端',
+    lang: 'en'
+  },
+  {
+    id: 'financial_times',
+    name: 'Financial Times (金融时报)',
+    category: 'finance',
+    categoryLabel: '财经商业',
+    type: 'rss',
+    url: 'https://www.ft.com/rss/home',
+    icon: 'briefcase',
+    badge: '英伦金融泰斗',
+    lang: 'en'
+  },
+  {
+    id: 'cnbc',
+    name: 'CNBC',
+    category: 'finance',
+    categoryLabel: '财经商业',
+    type: 'rss',
+    url: 'https://search.cnbc.com/rs/search/view.html?partnerId=2000&keywords=finance&sort=date',
+    icon: 'tv-2',
+    badge: '美股行情早知道',
+    lang: 'en'
+  },
+  {
+    id: 'wsj',
+    name: 'The Wall Street Journal (华尔街日报)',
+    category: 'finance',
+    categoryLabel: '财经商业',
+    type: 'rss',
+    url: 'https://feeds.a.dj.com/rss/RSSWorldNews.xml',
+    icon: 'globe',
+    badge: '全球商业日报',
+    lang: 'en'
+  },
+
+  // ================= 10. 科技前沿 =================
+  // 36氪，爱范儿Ifanr，TechWeb，Ars Technica, MIT Technology Review, The Verge, TechCrunch, IEEE Spectrum
+  {
+    id: '36kr',
+    name: '36氪',
+    category: 'tech',
+    categoryLabel: '科技前沿',
+    type: 'rss_clean',
+    url: 'https://36kr.com/feed',
+    icon: 'zap',
+    badge: '创投/科技快讯',
+    lang: 'zh'
+  },
+  {
+    id: 'ifanr',
+    name: '爱范儿 Ifanr',
+    category: 'tech',
+    categoryLabel: '科技前沿',
+    type: 'rss',
+    url: 'https://www.ifanr.com/feed',
+    icon: 'smartphone',
+    badge: '明日产品未来',
+    lang: 'zh'
+  },
+  {
+    id: 'techweb',
+    name: 'TechWeb',
+    category: 'tech',
+    categoryLabel: '科技前沿',
+    type: 'scrape',
+    url: 'https://www.techweb.com.cn/',
+    icon: 'globe',
+    badge: '互联网产业要闻',
+    lang: 'zh'
+  },
+  {
+    id: 'ars_technica',
+    name: 'Ars Technica',
+    category: 'tech',
+    categoryLabel: '科技前沿',
+    type: 'rss',
+    url: 'https://feeds.arstechnica.com/arstechnica/index',
+    icon: 'cpu',
+    badge: '极客深度硬核',
+    lang: 'en'
+  },
+  {
+    id: 'mit_tech_review',
+    name: 'MIT Technology Review',
+    category: 'tech',
+    categoryLabel: '科技前沿',
+    type: 'rss',
+    url: 'https://www.technologyreview.com/feed/',
+    icon: 'cpu-chip',
+    badge: '麻省理工前瞻',
+    lang: 'en'
+  },
+  {
+    id: 'the_verge',
+    name: 'The Verge',
+    category: 'tech',
+    categoryLabel: '科技前沿',
+    type: 'rss',
+    url: 'https://www.theverge.com/rss/index.xml',
+    icon: 'monitor',
+    badge: '数码文化美学',
+    lang: 'en'
+  },
+  {
+    id: 'techcrunch',
+    name: 'TechCrunch',
+    category: 'tech',
+    categoryLabel: '科技前沿',
+    type: 'rss',
+    url: 'https://techcrunch.com/feed/',
+    icon: 'rocket',
+    badge: '硅谷独角兽前沿',
+    lang: 'en'
+  },
+  {
+    id: 'ieee_spectrum',
+    name: 'IEEE Spectrum',
+    category: 'tech',
+    categoryLabel: '科技前沿',
+    type: 'curated_feed',
+    url: 'https://spectrum.ieee.org',
+    icon: 'activity',
+    badge: '电气与工程前沿',
+    lang: 'en'
+  }
+];
+
+const CATEGORIES = [
+  { id: 'all', label: '全部要闻', icon: 'flame', desc: '全网指定渠道聚合大信息流' },
+  { id: 'esports', label: '实时电竞', icon: 'trophy', desc: '玩加、兔玩、Dot Esports、HLTV、Esports Insider、Liquipedia' },
+  { id: 'gaming', label: '游戏前沿', icon: 'gamepad-2', desc: '机核、NGA、游民星空/3DM、IGN、Eurogamer、GamesIndustry、Game Developer' },
+  { id: 'world', label: '全球大事', icon: 'globe', desc: '新华网、人民网、央视新闻、路透社、美联社、BBC、半岛电视台' },
+  { id: 'sports', label: '体育竞技', icon: 'activity', desc: '新体育网、虎扑、直播吧、ESPN、BBC Sport、The Athletic、Motorsport' },
+  { id: 'military', label: '军事防务', icon: 'shield', desc: '中国军网、国防部网、观察者网、Defense News、TWZ、Janes、Breaking Defense、ISW' },
+  { id: 'education', label: '教育资讯', icon: 'graduation-cap', desc: '中国教育在线、教育部官网、学堂在线、THE、Inside Higher Ed、Education Week、Nature' },
+  { id: 'entertainment', label: '娱乐圈', icon: 'sparkles', desc: '新浪娱乐、豆瓣娱乐、Variety、Deadline、THR、People' },
+  { id: 'cinema', label: '影视文化', icon: 'clapperboard', desc: '豆瓣电影、1905电影网、IndieWire、Sight and Sound、RogerEbert、Criterion' },
+  { id: 'finance', label: '财经商业', icon: 'trending-up', desc: '财新网、第一财经、东方财富、Bloomberg、FT、CNBC、华尔街日报' },
+  { id: 'tech', label: '科技前沿', icon: 'cpu', desc: '36氪、爱范儿、TechWeb、Ars Technica、MIT科技评论、The Verge、TechCrunch、IEEE' }
+];
+
+module.exports = { SOURCES, CATEGORIES };

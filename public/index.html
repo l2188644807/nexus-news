@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>智讯枢纽 (NEXUS PULSE) - 全网权威实时资讯矩阵</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%232563eb'><circle cx='12' cy='12' r='10'/></svg>">
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eff6ff',
+              500: '#2563eb',
+              600: '#1d4ed8',
+              700: '#1e40af'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons & Vue 3 -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-[#f8fafc] dark:bg-slate-950 text-slate-900 dark:text-slate-100 min-h-screen transition-colors duration-200 font-sans antialiased selection:bg-blue-600 selection:text-white">
+
+  <div id="app" v-cloak class="flex flex-col min-h-screen">
+    
+    <!-- 1. 顶部全局导航栏 (Sticky Clean White Header) -->
+    <header class="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 transition-colors shadow-2xs">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-15 flex items-center justify-between gap-4">
+        
+        <!-- Logo 与状态指标 -->
+        <div class="flex items-center gap-3 cursor-pointer select-none" @click="setCategory('all')">
+          <div class="relative w-9 h-9 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-xs">
+            <i data-lucide="compass" class="w-5 h-5 text-blue-400"></i>
+            <span class="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+            </span>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="font-extrabold text-base tracking-wider text-slate-900 dark:text-white">NEXUS <span class="text-blue-600">PULSE</span></span>
+              <span class="text-[10px] px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 font-medium">智讯枢纽</span>
+            </div>
+            <div class="flex items-center gap-1.5 text-[11px] text-slate-400">
+              <span class="live-indicator-dot"></span>
+              <span class="text-slate-500 font-medium">{{ sseConnected ? '72渠道实时流在线' : '连接数据流...' }}</span>
+              <span>•</span>
+              <span class="font-mono text-slate-400">{{ currentTime }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 搜索栏 -->
+        <div class="flex-1 max-w-sm hidden md:block">
+          <div class="relative">
+            <i data-lucide="search" class="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+            <input 
+              v-model="searchQuery" 
+              @input="onSearchInput"
+              type="text" 
+              placeholder="快速搜索要闻、战报或渠道关键词..." 
+              class="w-full pl-8 pr-7 py-1.5 text-xs rounded-lg bg-slate-100/90 border border-slate-200/70 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-slate-800 placeholder-slate-400 transition"
+            >
+            <button 
+              v-if="searchQuery" 
+              @click="clearAllFilters"
+              class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+            >
+              <i data-lucide="x" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- 功能操作区 -->
+        <div class="flex items-center gap-2">
+          <!-- 一键重新抓取 -->
+          <button 
+            @click="forceRefresh" 
+            :disabled="isRefreshing"
+            class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-900 hover:bg-slate-800 text-white shadow-2xs transition active:scale-95 disabled:opacity-50"
+          >
+            <i data-lucide="refresh-cw" :class="{'animate-spin': isRefreshing}" class="w-3.5 h-3.5 text-blue-400"></i>
+            <span class="hidden sm:inline">{{ isRefreshing ? '采集抓取中...' : '全网实时刷新' }}</span>
+          </button>
+
+          <!-- 亮暗模式切换 -->
+          <button 
+            @click="toggleTheme" 
+            class="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition"
+            title="切换明暗主题"
+          >
+            <i :data-lucide="darkMode ? 'sun' : 'moon'" class="w-4 h-4"></i>
+          </button>
+        </div>
+
+      </div>
+    </header>
+
+    <!-- 2. 7x24h 实时快讯跑马灯 (Breaking News Ticker - 简约无缝) -->
+    <div class="bg-white border-b border-slate-200/80 text-xs overflow-hidden relative">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex items-center gap-3">
+        
+        <div class="flex items-center gap-1.5 font-bold text-[11px] uppercase tracking-wider text-red-600 bg-red-50 px-2 py-0.5 rounded border border-red-200/70 shrink-0">
+          <span class="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse"></span>
+          <span>实时快讯</span>
+        </div>
+
+        <div class="overflow-hidden relative flex-1 whitespace-nowrap">
+          <div class="marquee-track flex items-center gap-8 text-slate-600">
+            <span 
+              v-for="(item, idx) in [...tickerItems, ...tickerItems]" 
+              :key="idx"
+              @click="openArticle(item)"
+              class="inline-flex items-center gap-2 cursor-pointer hover:text-blue-600 transition"
+            >
+              <span class="px-1.5 py-0.2 rounded text-[10px] bg-slate-100 font-semibold text-slate-600">{{ item.source }}</span>
+              <span class="font-medium hover:underline">{{ item.title }}</span>
+              <span class="text-slate-400 text-[11px]">({{ timeAgo(item.time) }})</span>
+              <span class="text-slate-300">•</span>
+            </span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- 3. 主界面容器 -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5">
+
+      <!-- ================== 核心升级区：去杂乱，极致整洁的导航与控制台 ================== -->
+      <div class="mb-5 space-y-3">
+        
+        <!-- 1. 分类主导航 (极简滑动横栏，干净纯粹) -->
+        <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
+          <button 
+            v-for="cat in categories" 
+            :key="cat.id"
+            @click="setCategory(cat.id)"
+            :class="currentCategory === cat.id ? 'bg-slate-900 text-white font-semibold shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 bg-slate-100/70'"
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm transition shrink-0"
+          >
+            <i :data-lucide="cat.icon" class="w-3.5 h-3.5"></i>
+            <span>{{ cat.label }}</span>
+            <span 
+              v-if="stats.categoryCounts[cat.id] !== undefined"
+              :class="currentCategory === cat.id ? 'bg-white/20 text-white' : 'text-slate-400'"
+              class="text-[10px] font-mono ml-0.5"
+            >
+              {{ stats.categoryCounts[cat.id] }}
+            </span>
+          </button>
+        </div>
+
+        <!-- 2. 统一整合筛选工具条 (将原本杂乱的三排压缩为单一优雅卡片) -->
+        <div class="bg-white rounded-xl border border-slate-200/80 p-2.5 px-3 sm:px-4 shadow-2xs flex items-center justify-between gap-3 flex-wrap">
+          
+          <!-- 左侧：渠道下拉筛选器 + 焦点话题胶囊 -->
+          <div class="flex items-center gap-3 flex-wrap flex-1 min-w-0">
+            
+            <!-- 渠道专属下拉选择菜单 (将原本70个杂乱按钮收纳为专业整洁的下拉菜单) -->
+            <div class="flex items-center gap-1.5 shrink-0">
+              <span class="text-slate-400 text-xs font-medium flex items-center gap-1">
+                <i data-lucide="radio" class="w-3.5 h-3.5 text-blue-600"></i> 渠道:
+              </span>
+              <select 
+                v-model="selectedSource" 
+                @change="onSourceChange"
+                class="clean-select text-xs font-semibold bg-slate-50 hover:bg-slate-100 text-slate-800 border border-slate-200 rounded-lg pl-2.5 pr-7 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer transition shadow-2xs"
+              >
+                <option value="">全部渠道 ({{ currentCategory === 'all' ? '所有72个信标' : '当前分类全源' }})</option>
+                <option v-for="src in availableCategorySources" :key="src.id" :value="src.id">
+                  {{ src.name }} ({{ src.itemCount || 0 }} 篇)
+                </option>
+              </select>
+            </div>
+
+            <!-- 分割小线 -->
+            <div class="h-4 w-px bg-slate-200 hidden sm:block"></div>
+
+            <!-- 热门话题焦点 (精选前 5 个最热词，清爽无杂音) -->
+            <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar text-xs">
+              <span class="text-slate-400 text-[11px] font-medium shrink-0 flex items-center gap-0.5">
+                <i data-lucide="hash" class="w-3 h-3 text-slate-400"></i> 焦点:
+              </span>
+              <button 
+                v-for="tag in topFocusedTags" 
+                :key="tag.name"
+                @click="toggleTag(tag.name)"
+                :class="selectedTag === tag.name ? 'bg-blue-600 text-white font-semibold shadow-2xs' : 'text-slate-600 hover:text-blue-600 hover:bg-blue-50/60 bg-slate-50'"
+                class="px-2 py-0.5 rounded text-xs transition shrink-0"
+              >
+                #{{ tag.name }}
+              </button>
+            </div>
+
+          </div>
+
+          <!-- 右侧：活跃筛选指示与统计 -->
+          <div class="flex items-center gap-3 text-xs shrink-0 ml-auto">
+            
+            <!-- 如果处于筛选状态，提供醒目的重置按钮 -->
+            <div v-if="hasActiveFilters" class="flex items-center gap-1.5">
+              <span class="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-[11px] font-medium border border-blue-100">
+                筛选: {{ selectedSourceName || selectedTag || searchQuery }}
+              </span>
+              <button 
+                @click="clearAllFilters" 
+                class="text-slate-400 hover:text-red-600 transition flex items-center gap-0.5 font-medium"
+                title="清除所有筛选条件"
+              >
+                <i data-lucide="x-circle" class="w-3.5 h-3.5"></i>
+                <span>重置</span>
+              </button>
+            </div>
+
+            <span class="text-slate-400 font-mono text-[11px]">
+              收录 <strong class="text-slate-700 font-semibold">{{ totalCount }}</strong> 篇
+            </span>
+
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- 4. 新数据到达浮动提示 (Floating New Articles Alert) -->
+      <transition enter-active-class="transform ease-out duration-300 transition" enter-from-class="translate-y-2 opacity-0" enter-to-class="translate-y-0 opacity-100" leave-active-class="transition ease-in duration-200" leave-from-class="opacity-100" leave-to-class="opacity-0">
+        <div v-if="pendingNewCount > 0" class="mb-5 bg-slate-900 text-white p-3 rounded-xl shadow-md flex items-center justify-between cursor-pointer" @click="fetchNews(true)">
+          <div class="flex items-center gap-2 text-xs font-semibold">
+            <span class="flex h-2 w-2 relative">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <span>已实时接收到 {{ pendingNewCount }} 条最新资讯，点击立即载入</span>
+          </div>
+          <span class="text-[11px] font-mono bg-white/20 px-2 py-0.5 rounded hover:bg-white/30 transition">刷新展示</span>
+        </div>
+      </transition>
+
+      <!-- 5. 核心内容区：主信息流 + 侧边栏监控与分类聚焦 -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-7">
+        
+        <!-- 左侧主资讯流 (8 列) -->
+        <div class="lg:col-span-8 space-y-5">
+
+          <!-- 焦点置顶头条卡片 (Hero Card) -->
+          <div 
+            v-if="heroArticle && currentPage === 1 && !hasActiveFilters"
+            @click="openArticle(heroArticle)"
+            class="relative group rounded-xl overflow-hidden bg-white border border-slate-200/90 cursor-pointer shadow-xs news-card-hover"
+          >
+            <div class="aspect-[16/8] sm:aspect-[21/9] w-full relative overflow-hidden bg-slate-900">
+              <img 
+                :src="heroArticle.image" 
+                :alt="heroArticle.title"
+                class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 filter brightness-95 group-hover:brightness-100"
+              >
+              <div class="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent"></div>
+              
+              <div class="absolute top-3 left-3 flex items-center gap-2">
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-red-600 text-white shadow-xs">
+                  重磅焦点
+                </span>
+                <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-white/90 text-slate-800 shadow-xs backdrop-blur-md">
+                  {{ heroArticle.source }}
+                </span>
+              </div>
+
+              <div class="absolute bottom-3.5 left-3.5 right-3.5 space-y-1.5 text-white">
+                <h2 class="text-base sm:text-xl font-bold group-hover:text-blue-300 transition leading-snug">
+                  {{ heroArticle.title }}
+                </h2>
+                <p class="text-xs text-slate-200 line-clamp-2 max-w-3xl leading-relaxed opacity-90">
+                  {{ heroArticle.summary }}
+                </p>
+                <div class="flex items-center gap-3 text-[11px] text-slate-300 pt-0.5">
+                  <span class="font-semibold text-white">{{ heroArticle.source }}</span>
+                  <span>•</span>
+                  <span>{{ timeAgo(heroArticle.pubDate) }}</span>
+                  <div class="flex items-center gap-1 ml-auto">
+                    <span v-for="tag in heroArticle.tags.slice(0, 2)" :key="tag" class="text-[10px] px-1.5 py-0.2 rounded bg-white/20 text-white font-medium">
+                      #{{ tag }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- 普通资讯网格流 (News Cards Grid) -->
+          <div v-if="isLoading" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div v-for="n in 6" :key="n" class="bg-white border border-slate-200/80 rounded-xl p-4 animate-pulse space-y-3">
+              <div class="h-36 bg-slate-100 rounded-lg"></div>
+              <div class="h-4 bg-slate-100 rounded w-3/4"></div>
+              <div class="h-3 bg-slate-100 rounded w-full"></div>
+            </div>
+          </div>
+
+          <!-- 真实卡片列表 -->
+          <div v-else-if="feedArticles.length > 0" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <article 
+              v-for="item in feedArticles" 
+              :key="item.id"
+              @click="openArticle(item)"
+              class="group flex flex-col justify-between bg-white rounded-xl border border-slate-200/80 overflow-hidden cursor-pointer news-card-hover shadow-2xs"
+            >
+              <div class="relative aspect-[16/9] overflow-hidden bg-slate-100">
+                <img 
+                  :src="item.image" 
+                  :alt="item.title"
+                  loading="lazy"
+                  class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                >
+                <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
+                
+                <div class="absolute top-2 left-2 flex items-center gap-1.5">
+                  <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-white/95 text-slate-800 shadow-2xs">
+                    {{ item.source }}
+                  </span>
+                  <span v-if="item.isBreaking" class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-600 text-white shadow-2xs">
+                    LIVE
+                  </span>
+                </div>
+
+                <div class="absolute bottom-2 left-2 right-2 flex items-center justify-between text-[10px] text-white">
+                  <span class="bg-black/50 px-1.5 py-0.2 rounded backdrop-blur-sm">{{ item.categoryLabel }}</span>
+                  <span class="bg-black/50 px-1.5 py-0.2 rounded backdrop-blur-sm">{{ timeAgo(item.pubDate) }}</span>
+                </div>
+              </div>
+
+              <div class="p-3.5 flex-1 flex flex-col justify-between space-y-2.5">
+                <div class="space-y-1">
+                  <h3 class="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-blue-600 transition-colors line-clamp-2 leading-snug">
+                    {{ item.title }}
+                  </h3>
+                  <p class="text-[11px] text-slate-500 line-clamp-2 leading-relaxed">
+                    {{ item.summary }}
+                  </p>
+                </div>
+
+                <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
+                  <div class="flex items-center gap-1 overflow-hidden">
+                    <span v-for="tag in item.tags.slice(0, 2)" :key="tag" class="text-[10px] px-1.5 py-0.2 rounded bg-slate-100 text-slate-600">
+                      #{{ tag }}
+                    </span>
+                  </div>
+                  <span class="text-blue-600 font-semibold group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5">
+                    速览 <i data-lucide="chevron-right" class="w-3 h-3"></i>
+                  </span>
+                </div>
+              </div>
+
+            </article>
+          </div>
+
+          <!-- 空数据状态 -->
+          <div v-else class="text-center py-14 bg-white rounded-xl border border-dashed border-slate-200 space-y-2">
+            <i data-lucide="inbox" class="w-10 h-10 mx-auto text-slate-300"></i>
+            <h4 class="font-semibold text-xs text-slate-700">暂无匹配资讯</h4>
+            <p class="text-[11px] text-slate-400">可尝试清除筛选条件，或点击右上角“全网实时刷新”</p>
+            <button @click="clearAllFilters" class="px-3 py-1 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">重置所有筛选</button>
+          </div>
+
+          <!-- 分页栏 -->
+          <div v-if="totalPages > 1" class="flex items-center justify-between pt-3 border-t border-slate-200">
+            <button 
+              @click="changePage(currentPage - 1)" 
+              :disabled="currentPage === 1"
+              class="px-3 py-1.5 text-xs font-medium rounded-lg bg-white border border-slate-200 disabled:opacity-40 hover:bg-slate-50 transition shadow-2xs"
+            >
+              上一页
+            </button>
+            <span class="text-xs text-slate-500 font-mono">
+              第 {{ currentPage }} / {{ totalPages }} 页 (共 {{ totalCount }} 篇)
+            </span>
+            <button 
+              @click="changePage(currentPage + 1)" 
+              :disabled="currentPage === totalPages"
+              class="px-3 py-1.5 text-xs font-medium rounded-lg bg-white border border-slate-200 disabled:opacity-40 hover:bg-slate-50 transition shadow-2xs"
+            >
+              下一页
+            </button>
+          </div>
+
+        </div>
+
+        <!-- 右侧侧边栏 (4 列)：精简高价值组件，去除冗长堆叠 -->
+        <aside class="lg:col-span-4 space-y-5">
+
+          <!-- 1. 体育与电竞赛况看板 (Live Highlights) -->
+          <div class="bg-white rounded-xl border border-slate-200/80 p-4 shadow-2xs space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-1.5">
+                <span class="p-1 rounded bg-orange-50 text-orange-600">
+                  <i data-lucide="trophy" class="w-3.5 h-3.5"></i>
+                </span>
+                <h3 class="font-bold text-xs text-slate-900">体坛竞技 & 实时电竞</h3>
+              </div>
+              <button @click="setCategory('esports')" class="text-[11px] text-blue-600 hover:underline">专区</button>
+            </div>
+
+            <div class="space-y-2">
+              <div 
+                v-for="item in articles.filter(a => ['sports', 'esports'].includes(a.category)).slice(0, 4)" 
+                :key="item.id"
+                @click="openArticle(item)"
+                class="p-2 rounded-lg bg-slate-50 hover:bg-blue-50/50 border border-slate-100 cursor-pointer transition flex gap-2.5"
+              >
+                <div class="w-12 h-12 rounded overflow-hidden bg-slate-200 shrink-0">
+                  <img :src="item.image" class="w-full h-full object-cover">
+                </div>
+                <div class="flex-1 min-w-0 space-y-0.5">
+                  <h4 class="text-xs font-semibold line-clamp-1 text-slate-800 hover:text-blue-600">{{ item.title }}</h4>
+                  <div class="flex items-center justify-between text-[10px] text-slate-400">
+                    <span class="font-medium text-slate-600">{{ item.source }}</span>
+                    <span>{{ timeAgo(item.pubDate) }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. 全球大事与要闻速报 (World Headlines) -->
+          <div class="bg-white rounded-xl border border-slate-200/80 p-4 shadow-2xs space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-1.5">
+                <span class="p-1 rounded bg-blue-50 text-blue-600">
+                  <i data-lucide="globe" class="w-3.5 h-3.5"></i>
+                </span>
+                <h3 class="font-bold text-xs text-slate-900">全球大事 & 深度要闻</h3>
+              </div>
+              <button @click="setCategory('world')" class="text-[11px] text-blue-600 hover:underline">专区</button>
+            </div>
+
+            <div class="space-y-2">
+              <div 
+                v-for="(wItem, wIdx) in articles.filter(a => ['world', 'military', 'finance'].includes(a.category)).slice(0, 4)" 
+                :key="wItem.id"
+                @click="openArticle(wItem)"
+                class="flex items-start gap-2 p-1.5 rounded-lg hover:bg-slate-50 cursor-pointer transition"
+              >
+                <span class="w-4 h-4 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center font-mono text-[10px] font-bold shrink-0 mt-0.5">
+                  {{ wIdx + 1 }}
+                </span>
+                <div class="flex-1 min-w-0 space-y-0.5">
+                  <h4 class="text-xs font-medium text-slate-800 line-clamp-1 hover:text-blue-600">
+                    {{ wItem.title }}
+                  </h4>
+                  <div class="text-[10px] text-slate-400 flex items-center gap-2">
+                    <span class="font-medium text-slate-600">{{ wItem.source }}</span>
+                    <span>•</span>
+                    <span>{{ timeAgo(wItem.pubDate) }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. 数据源状态看板 (改为精致收起式，不再长屏堆叠) -->
+          <div class="bg-white rounded-xl border border-slate-200/80 p-4 shadow-2xs space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-1.5">
+                <span class="p-1 rounded bg-emerald-50 text-emerald-600">
+                  <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
+                </span>
+                <h3 class="font-bold text-xs text-slate-900">指定渠道全域监控</h3>
+              </div>
+              <span class="text-[10px] px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 font-medium">72 信标就绪</span>
+            </div>
+
+            <div class="p-2.5 rounded-lg bg-slate-50 border border-slate-100 text-xs space-y-1.5">
+              <div class="flex items-center justify-between text-slate-600 text-[11px]">
+                <span>管道状态:</span>
+                <span class="text-emerald-600 font-medium flex items-center gap-1">
+                  <span class="live-indicator-dot"></span> 全通道正常运转
+                </span>
+              </div>
+              <div class="flex items-center justify-between text-slate-600 text-[11px]">
+                <span>自动轮询:</span>
+                <span class="text-slate-500 font-mono">每 5 分钟并发更新</span>
+              </div>
+              <div class="flex items-center justify-between text-slate-600 text-[11px]">
+                <span>在线推流:</span>
+                <span class="text-slate-700 font-mono font-medium">{{ stats.connectedClients }} 客户端</span>
+              </div>
+            </div>
+
+            <!-- 可选折叠展开明细 -->
+            <button 
+              @click="showAllSources = !showAllSources" 
+              class="w-full py-1 text-center text-[11px] text-slate-500 hover:text-blue-600 transition flex items-center justify-center gap-1 border-t border-slate-100 pt-2"
+            >
+              <span>{{ showAllSources ? '收起渠道列表' : '查看 72 渠道延迟明细' }}</span>
+              <i :data-lucide="showAllSources ? 'chevron-up' : 'chevron-down'" class="w-3 h-3"></i>
+            </button>
+
+            <!-- 展开区域 -->
+            <div v-if="showAllSources" class="max-h-56 overflow-y-auto space-y-1 text-xs pt-1">
+              <div v-for="src in stats.sources" :key="src.id" class="flex items-center justify-between p-1.5 rounded bg-slate-50 text-[11px]">
+                <span class="truncate max-w-[150px] text-slate-700">{{ src.name }}</span>
+                <span class="text-slate-400 font-mono">{{ src.latencyMs || 0 }}ms</span>
+              </div>
+            </div>
+
+          </div>
+
+        </aside>
+
+      </div>
+
+    </main>
+
+    <!-- 6. 详情阅读弹窗 (Article Reader Modal - 白底高清质感) -->
+    <div 
+      v-if="selectedArticle" 
+      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm transition-opacity"
+      @click.self="closeArticle"
+    >
+      <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-xl relative flex flex-col border border-slate-200">
+        
+        <button 
+          @click="closeArticle" 
+          class="absolute top-3.5 right-3.5 z-10 w-7 h-7 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center backdrop-blur transition"
+        >
+          <i data-lucide="x" class="w-3.5 h-3.5"></i>
+        </button>
+
+        <div class="relative aspect-video w-full overflow-hidden bg-slate-900">
+          <img :src="selectedArticle.image" class="w-full h-full object-cover">
+          <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+          
+          <div class="absolute bottom-3 left-4 right-4">
+            <span class="text-xs text-white font-bold bg-blue-600 px-2 py-0.5 rounded shadow-xs">{{ selectedArticle.source }}</span>
+          </div>
+        </div>
+
+        <div class="p-5 space-y-3.5">
+          <h2 class="text-base sm:text-xl font-bold text-slate-900 leading-snug">
+            {{ selectedArticle.title }}
+          </h2>
+
+          <div class="flex items-center gap-3 text-xs text-slate-400 pb-2.5 border-b border-slate-100">
+            <span>{{ formatFullTime(selectedArticle.pubDate) }}</span>
+            <span>•</span>
+            <span>{{ timeAgo(selectedArticle.pubDate) }}</span>
+            <span>•</span>
+            <span class="font-semibold text-slate-700">来源: {{ selectedArticle.source }}</span>
+          </div>
+
+          <div class="bg-blue-50/60 border border-blue-100 rounded-xl p-3.5 space-y-1.5">
+            <div class="flex items-center gap-1.5 text-xs font-bold text-blue-700">
+              <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+              <span>要点速览 (AI Summary)</span>
+            </div>
+            <p class="text-xs sm:text-sm text-slate-700 leading-relaxed">
+              {{ selectedArticle.summary || selectedArticle.content }}
+            </p>
+          </div>
+
+          <div class="flex items-center gap-1.5 flex-wrap pt-1">
+            <span v-for="tag in selectedArticle.tags" :key="tag" class="text-[11px] px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-medium">
+              #{{ tag }}
+            </span>
+          </div>
+
+          <div class="pt-3 border-t border-slate-100 flex items-center justify-between gap-3">
+            <button 
+              @click="copyLink(selectedArticle.link)" 
+              class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-medium transition"
+            >
+              <i data-lucide="share-2" class="w-3.5 h-3.5"></i>
+              <span>复制链接</span>
+            </button>
+            <a 
+              :href="selectedArticle.link" 
+              target="_blank" 
+              class="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-2xs transition"
+            >
+              <span>直达【{{ selectedArticle.source }}】原文报道</span>
+              <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+            </a>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+
+    <!-- 7. 全局 Toast 提示通知 -->
+    <transition enter-active-class="transform ease-out duration-300 transition" enter-from-class="translate-y-4 opacity-0" enter-to-class="translate-y-0 opacity-100" leave-active-class="transition ease-in duration-200" leave-from-class="opacity-100" leave-to-class="opacity-0">
+      <div v-if="toast.show" class="fixed bottom-5 right-5 z-50 max-w-sm bg-slate-900 text-white px-3.5 py-2.5 rounded-xl shadow-lg flex items-center gap-2.5">
+        <i data-lucide="bell" class="w-4 h-4 text-blue-400 shrink-0"></i>
+        <span class="text-xs font-medium">{{ toast.message }}</span>
+      </div>
+    </transition>
+
+    <!-- 8. 页脚 (Footer) -->
+    <footer class="mt-auto border-t border-slate-200/80 bg-white py-5 text-xs text-slate-400">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div class="flex items-center gap-2">
+          <span class="font-bold text-slate-800">NEXUS PULSE 智讯枢纽</span>
+          <span>© 2026 全域指定权威渠道实时推流系统</span>
+        </div>
+        <div class="flex items-center gap-2.5 flex-wrap text-slate-400 text-[11px]">
+          <span>实时电竞</span> • <span>游戏前沿</span> • <span>全球大事</span> • <span>体育竞技</span> • <span>军事防务</span> • <span>教育资讯</span> • <span>娱乐圈</span> • <span>影视文化</span> • <span>财经商业</span> • <span>科技前沿</span>
+        </div>
+      </div>
+    </footer>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
