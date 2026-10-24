@@ -21,8 +21,15 @@ const parser = new Parser({
   }
 });
 
-// 各模块主题高质量摄影图库兜底
+// 各模块主题高质量摄影图库兜底 (含天文学唯美深空摄影)
 const CATEGORY_DEFAULT_IMAGES = {
+  astronomy: [
+    'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=600&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=600&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1462331940025-496dfbfc7564?w=600&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?w=600&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1516339901601-2e1b62dc0c45?w=600&auto=format&fit=crop&q=80'
+  ],
   esports: [
     'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600&auto=format&fit=crop&q=80',
     'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=600&auto=format&fit=crop&q=80',
@@ -118,18 +125,34 @@ function deriveTags(title, summary, source) {
   if (source.badge) tags.add(source.badge);
 
   const keywordsMap = [
+    // 天文学
+    { tag: 'FAST天眼', keys: ['fast', '中国天眼', '脉冲星', '射电'] },
+    { tag: '韦伯空间望远镜', keys: ['jwst', 'webb', '韦伯', '原星系'] },
+    { tag: '欧空局ESA', keys: ['esa', '欧空局', '欧几里得', '盖亚'] },
+    { tag: '系外行星', keys: ['exoplanet', '系外行星', '超级地球', '宜居带'] },
+    { tag: '引力波与黑洞', keys: ['black hole', '黑洞', '引力波', 'gravitational'] },
+    { tag: '深空探测', keys: ['nasa', '深空', '深空测轨', '行星', '小行星', '彗星'] },
+    // 电竞
     { tag: 'CS2', keys: ['cs2', 'counter-strike', 'hltv', 'major', 'navi', 'faze'] },
     { tag: '英雄联盟', keys: ['lol', 'league of legends', 'lpl', 'lck', 'faker', 's14'] },
     { tag: '无畏契约', keys: ['valorant', 'vct', '无畏契约', '瓦罗兰特'] },
+    // 游戏
     { tag: '3A大作', keys: ['steam', 'ps5', 'xbox', 'switch', 'gta', '黑神话', '卡普空'] },
+    // 国际政经
     { tag: '国际政经', keys: ['联合国', '气候', '峰会', '总统', '首脑', '外长'] },
+    // 体育
     { tag: '欧冠足球', keys: ['欧冠', '足球', '英超', '西甲', '国足', '世界杯'] },
     { tag: 'NBA体坛', keys: ['nba', '篮球', '詹姆斯', '勇士', '湖人'] },
+    // 军事
     { tag: '军工防务', keys: ['防务', '战机', '无人机', '军舰', '导弹', '军演'] },
+    // 教育
     { tag: '招考研招', keys: ['考研', '高考', '高校', '大学', '招生', '教育部'] },
+    // 娱乐与影视
     { tag: '文娱独家', keys: ['明星', '演员', '恋情', '首谈', '家庭', '热搜'] },
     { tag: '院线大片', keys: ['电影', '上映', '票房', '影评', '定档', '好莱坞', 'variety', 'imax'] },
+    // 财经
     { tag: '宏观金融', keys: ['股市', '央行', '降息', '加息', '美元', '贸易', '通胀'] },
+    // 科技
     { tag: 'AI前沿', keys: ['ai', '大模型', 'gpt', 'openai', '芯片', '算力'] }
   ];
 
@@ -147,17 +170,11 @@ class HybridAggregator {
     this.isFetching = false;
   }
 
-  /**
-   * 1. 标准 RSS 源采集
-   */
   async fetchRSS(source) {
     const feed = await parser.parseURL(source.url);
     return (feed.items || []).slice(0, 15).map(raw => this.formatItem(raw, source));
   }
 
-  /**
-   * 2. 清洗型 RSS 采集 (修复像 36Kr, Dot Esports 常见的 unencoded < 或特殊属性)
-   */
   async fetchCleanRSS(source) {
     const res = await fetch(source.url, {
       headers: {
@@ -167,7 +184,6 @@ class HybridAggregator {
       signal: AbortSignal.timeout(9000)
     });
     let text = await res.text();
-    // 修复 36Kr 等常见的非转义标签
     text = text.replace(/<description>(.*?)<\/description>/gis, (match, content) => {
       return `<description><![CDATA[${content.replace(/<!\[CDATA\[|\]\]>/g, '')}]]></description>`;
     });
@@ -175,9 +191,6 @@ class HybridAggregator {
     return (feed.items || []).slice(0, 15).map(raw => this.formatItem(raw, source));
   }
 
-  /**
-   * 3. 官方门户 HTML 结构化提取 (适用于无 RSS 的 81.cn, mod.gov.cn, eol.cn, gamersky 等)
-   */
   async fetchScrape(source) {
     const res = await fetch(source.url, {
       headers: {
@@ -197,7 +210,7 @@ class HybridAggregator {
       let href = $(el).attr('href');
 
       if (!href || href.startsWith('javascript') || href === '#') return;
-      if (title.length < 12 || title.length > 60) return;
+      if (title.length < 12 || title.length > 65) return;
       if (seenTitles.has(title)) return;
       seenTitles.add(title);
 
@@ -224,11 +237,7 @@ class HybridAggregator {
     return items.map(raw => this.formatItem(raw, source));
   }
 
-  /**
-   * 4. 严防反爬/风控站点的保活信标与最新快讯提取
-   */
   async fetchCurated(source) {
-    // 从持久化种子或现有库提取该 sourceId 的最新内容，保持活跃
     const existing = Array.from(storage.articles.values()).filter(a => a.sourceId === source.id);
     if (existing.length > 0) {
       return existing.slice(0, 8);
@@ -266,7 +275,7 @@ class HybridAggregator {
     const title = (raw.title || '最新资讯').trim();
     const tags = deriveTags(title, summary, source);
     const isBreaking = (Date.now() - timestamp < 3600000) || title.includes('重磅') || title.includes('突发') || title.includes('最新');
-    const isHot = title.includes('官宣') || title.includes('总决赛') || title.includes('特惠') || isBreaking;
+    const isHot = title.includes('首发') || title.includes('发现') || title.includes('突破') || title.includes('特惠') || isBreaking;
 
     return {
       id: `${source.id}-${hashId}`,
@@ -318,7 +327,6 @@ class HybridAggregator {
       const latency = Date.now() - startTime;
       console.warn(`[Aggregator] Notice on ${source.name} (${source.id}): ${err.message}`);
 
-      // 降级使用本地该信标历史或种子保持展示
       const fallback = Array.from(storage.articles.values()).filter(a => a.sourceId === source.id);
       
       storage.updateSourceStatus(source.id, {
@@ -342,7 +350,7 @@ class HybridAggregator {
     }
 
     this.isFetching = true;
-    console.log(`[Aggregator] Starting crawl across ${SOURCES.length} user-specified channels...`);
+    console.log(`[Aggregator] Starting crawl across ${SOURCES.length} user-specified channels (including Astronomy)...`);
 
     try {
       const results = await Promise.allSettled(

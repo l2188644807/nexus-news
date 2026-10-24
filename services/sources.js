@@ -1,11 +1,10 @@
 /**
  * 智讯枢纽 (NEXUS PULSE) 专属定制多源矩阵
- * 严格按照用户指定渠道配置，覆盖 10 大核心垂直板块
+ * 覆盖 11 大核心垂直板块 (含全新天文学模块)
  */
 
 const SOURCES = [
   // ================= 1. 电竞模块 =================
-  // 玩加电竞（Score），兔玩网，Dot esports，HLTV, Esports Insider，Liquipedia
   {
     id: 'wanplus',
     name: '玩加电竞 (Score)',
@@ -74,7 +73,6 @@ const SOURCES = [
   },
 
   // ================= 2. 游戏前沿 =================
-  // 机核Gcores，NGA, 游民星空/3DM, IGN, Eurogamer, Gamesindustry.biz, Game Developer
   {
     id: 'gcores',
     name: '机核 Gcores',
@@ -154,7 +152,6 @@ const SOURCES = [
   },
 
   // ================= 3. 全球大事 =================
-  // 新华网，人民网 ，央视新闻网，Reuters（路透社），Associated Press（美联社），BBC News，AI Jazeera English
   {
     id: 'xinhua',
     name: '新华网',
@@ -234,7 +231,6 @@ const SOURCES = [
   },
 
   // ================= 4. 体育竞技 =================
-  // 新体育网（官方），虎扑，直播吧，ESPN, BBC Sport，The Athletic，Motorsport.com
   {
     id: 'sports_cn',
     name: '新体育网 (官方)',
@@ -314,7 +310,6 @@ const SOURCES = [
   },
 
   // ================= 5. 军事防务 =================
-  // 中国军网（81.cn），国防部网（Mod.gov.cn)，观察者网军事板块，Defense News, The War Zone(TWZ), Janes, Breaking Defense, Institute for the Study of War(ISW)
   {
     id: 'mil_81',
     name: '中国军网 (81.cn)',
@@ -404,8 +399,186 @@ const SOURCES = [
     lang: 'en'
   },
 
-  // ================= 6. 教育资讯 =================
-  // 中国教育在线，教育部官网（moe.gov.cn)，学堂在线，Times Higher Education(THE), Inside Higher Ed, Education Week, Nature
+  // ================= 6. 天文学模块 (新增！超强权威阵容) =================
+  // NASA，ESA, ESO, AAS, IAU, Nature/Science，Quanta Magazine，Sky & telescope，arXiv，国家天文台（NAO)，中国国家天文，中国天文学会，紫金山天文台，上海天文官网，国家天文科学数据中心NADC，中国科学报天文板块
+  {
+    id: 'nasa',
+    name: 'NASA (美国航空航天局)',
+    category: 'astronomy',
+    categoryLabel: '天文学',
+    type: 'rss',
+    url: 'https://www.nasa.gov/news-release/feed/',
+    icon: 'orbit',
+    badge: 'NASA深空/韦伯',
+    lang: 'en'
+  },
+  {
+    id: 'esa',
+    name: 'ESA (欧洲空间局)',
+    category: 'astronomy',
+    categoryLabel: '天文学',
+    type: 'rss',
+    url: 'https://www.esa.int/rssfeed/Our_Activities/Space_Science',
+    icon: 'compass',
+    badge: '欧空局/空间科学',
+    lang: 'en'
+  },
+  {
+    id: 'eso',
+    name: 'ESO (欧洲南方天文台)',
+    category: 'astronomy',
+    categoryLabel: '天文学',
+    type: 'rss',
+    url: 'https://www.eso.org/public/news/feed/',
+    icon: 'telescope',
+    badge: 'VLT甚大望远镜',
+    lang: 'en'
+  },
+  {
+    id: 'aas',
+    name: 'AAS (美国天文学会)',
+    category: 'astronomy',
+    categoryLabel: '天文学',
+    type: 'rss',
+    url: 'https://aasnova.org/feed/',
+    icon: 'star',
+    badge: 'AAS研究前沿',
+    lang: 'en'
+  },
+  {
+    id: 'iau',
+    name: 'IAU (国际天文学联合会)',
+    category: 'astronomy',
+    categoryLabel: '天文学',
+    type: 'curated_feed',
+    url: 'https://www.iau.org',
+    icon: 'globe',
+    badge: '全球天体命名/权威',
+    lang: 'en'
+  },
+  {
+    id: 'nature_science_astro',
+    name: 'Nature / Science 天文专刊',
+    category: 'astronomy',
+    categoryLabel: '天文学',
+    type: 'rss',
+    url: 'https://www.nature.com/subjects/astronomy-and-astrophysics.rss',
+    icon: 'atom',
+    badge: '顶刊天文物理',
+    lang: 'en'
+  },
+  {
+    id: 'quanta_astro',
+    name: 'Quanta Magazine',
+    category: 'astronomy',
+    categoryLabel: '天文学',
+    type: 'rss',
+    url: 'https://api.quantamagazine.org/feed/',
+    icon: 'sparkles',
+    badge: '量子与天体物理',
+    lang: 'en'
+  },
+  {
+    id: 'sky_and_telescope',
+    name: 'Sky & Telescope (天空与望远镜)',
+    category: 'astronomy',
+    categoryLabel: '天文学',
+    type: 'rss',
+    url: 'https://skyandtelescope.org/astronomy-news/feed/',
+    icon: 'eye',
+    badge: '观星指南/天象',
+    lang: 'en'
+  },
+  {
+    id: 'arxiv_astro',
+    name: 'arXiv (astro-ph 天体物理)',
+    category: 'astronomy',
+    categoryLabel: '天文学',
+    type: 'rss',
+    url: 'http://export.arxiv.org/api/query?search_query=cat:astro-ph&sortBy=submittedDate&sortOrder=descending&max_results=15',
+    icon: 'file-text',
+    badge: '国际前沿预印本',
+    lang: 'en'
+  },
+  {
+    id: 'naoc',
+    name: '国家天文台 (NAO)',
+    category: 'astronomy',
+    categoryLabel: '天文学',
+    type: 'scrape',
+    url: 'http://www.nao.cas.cn/',
+    icon: 'satellite',
+    badge: 'FAST中国天眼',
+    lang: 'zh'
+  },
+  {
+    id: 'chinese_national_astronomy',
+    name: '中国国家天文',
+    category: 'astronomy',
+    categoryLabel: '天文学',
+    type: 'curated_feed',
+    url: 'https://www.nao.cas.cn/',
+    icon: 'sun',
+    badge: '国家级天文科普',
+    lang: 'zh'
+  },
+  {
+    id: 'cas_astronomy_society',
+    name: '中国天文学会',
+    category: 'astronomy',
+    categoryLabel: '天文学',
+    type: 'curated_feed',
+    url: 'http://www.pmo.cas.cn/',
+    icon: 'award',
+    badge: '全国天文学界',
+    lang: 'zh'
+  },
+  {
+    id: 'pmo',
+    name: '紫金山天文台',
+    category: 'astronomy',
+    categoryLabel: '天文学',
+    type: 'scrape',
+    url: 'http://www.pmo.cas.cn/',
+    icon: 'mountain',
+    badge: '暗物质探测/小行星',
+    lang: 'zh'
+  },
+  {
+    id: 'shao',
+    name: '上海天文台官网',
+    category: 'astronomy',
+    categoryLabel: '天文学',
+    type: 'scrape',
+    url: 'http://www.shao.cas.cn/',
+    icon: 'radar',
+    badge: 'VLBI深空测轨',
+    lang: 'zh'
+  },
+  {
+    id: 'nadc',
+    name: '国家天文科学数据中心 (NADC)',
+    category: 'astronomy',
+    categoryLabel: '天文学',
+    type: 'curated_feed',
+    url: 'https://nadc.china-vo.org/',
+    icon: 'database',
+    badge: '海量巡天数据库',
+    lang: 'zh'
+  },
+  {
+    id: 'sciencenet_astro',
+    name: '中国科学报天文板块',
+    category: 'astronomy',
+    categoryLabel: '天文学',
+    type: 'scrape',
+    url: 'https://news.sciencenet.cn/',
+    icon: 'newspaper',
+    badge: '中科院科学网',
+    lang: 'zh'
+  },
+
+  // ================= 7. 教育资讯 =================
   {
     id: 'eol',
     name: '中国教育在线',
@@ -484,8 +657,7 @@ const SOURCES = [
     lang: 'en'
   },
 
-  // ================= 7. 娱乐圈 =================
-  // 新浪娱乐，豆瓣小组/豆瓣娱乐，Variety, Deadline, The Hollywood Reporter(THR), People
+  // ================= 8. 娱乐圈 =================
   {
     id: 'sina_ent',
     name: '新浪娱乐',
@@ -553,8 +725,7 @@ const SOURCES = [
     lang: 'en'
   },
 
-  // ================= 8. 影视文化 =================
-  // 豆瓣电影，1905电影网(央视电影官方），IndieWire, Sight and Sound, RogerEbert.com, The Criterion Collection
+  // ================= 9. 影视文化 =================
   {
     id: 'douban_movie',
     name: '豆瓣电影',
@@ -622,8 +793,7 @@ const SOURCES = [
     lang: 'en'
   },
 
-  // ================= 9. 财经商业 =================
-  // 财新网，第一财经，东方财富网，Bloomberg, Financial Times, CNBC, The Wall Street Journal (华尔街日报)
+  // ================= 10. 财经商业 =================
   {
     id: 'caixin',
     name: '财新网',
@@ -702,8 +872,7 @@ const SOURCES = [
     lang: 'en'
   },
 
-  // ================= 10. 科技前沿 =================
-  // 36氪，爱范儿Ifanr，TechWeb，Ars Technica, MIT Technology Review, The Verge, TechCrunch, IEEE Spectrum
+  // ================= 11. 科技前沿 =================
   {
     id: '36kr',
     name: '36氪',
@@ -796,6 +965,7 @@ const SOURCES = [
 
 const CATEGORIES = [
   { id: 'all', label: '全部要闻', icon: 'flame', desc: '全网指定渠道聚合大信息流' },
+  { id: 'astronomy', label: '天文学', icon: 'telescope', desc: 'NASA、ESA、ESO、国家天文台FAST、韦伯望远镜与深空物理' },
   { id: 'esports', label: '实时电竞', icon: 'trophy', desc: '玩加、兔玩、Dot Esports、HLTV、Esports Insider、Liquipedia' },
   { id: 'gaming', label: '游戏前沿', icon: 'gamepad-2', desc: '机核、NGA、游民星空/3DM、IGN、Eurogamer、GamesIndustry、Game Developer' },
   { id: 'world', label: '全球大事', icon: 'globe', desc: '新华网、人民网、央视新闻、路透社、美联社、BBC、半岛电视台' },

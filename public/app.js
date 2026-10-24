@@ -6,10 +6,12 @@ createApp({
     const tickerItems = ref([]);
     const sourcesList = ref([]);
     const showAllSources = ref(false);
+    const showMobileSearch = ref(false);
     const stats = ref({
       totalArticles: 0,
       categoryCounts: {
         all: 0,
+        astronomy: 0,
         esports: 0,
         gaming: 0,
         world: 0,
@@ -44,9 +46,10 @@ createApp({
     const pendingNewCount = ref(0);
     const currentTime = ref('');
 
-    // 10 大核心板块配置
+    // 11 大核心板块配置 (含全新天文学模块)
     const categories = [
       { id: 'all', label: '全部要闻', icon: 'flame' },
+      { id: 'astronomy', label: '天文学', icon: 'telescope' },
       { id: 'esports', label: '实时电竞', icon: 'trophy' },
       { id: 'gaming', label: '游戏前沿', icon: 'gamepad-2' },
       { id: 'world', label: '全球大事', icon: 'globe' },
@@ -157,7 +160,7 @@ createApp({
     const forceRefresh = async () => {
       if (isRefreshing.value) return;
       isRefreshing.value = true;
-      showToast('正在向所有指定渠道发起全网并发采集...', 'info');
+      showToast('正在向全网 88 个权威媒体与空间天文机构发起全网并发采集...', 'info');
 
       try {
         const res = await fetch('/api/news/refresh', { method: 'POST' });
@@ -310,25 +313,21 @@ createApp({
       return articles.value.filter(a => a.id !== heroArticle.value.id);
     });
 
-    // 当前选定分类下的可用渠道列表（供下拉框清晰筛选）
     const availableCategorySources = computed(() => {
       if (!stats.value.sources) return [];
       if (currentCategory.value === 'all') return stats.value.sources;
       return stats.value.sources.filter(s => s.category === currentCategory.value);
     });
 
-    // 精选前 5 个最热门话题，拒绝堆砌杂乱
     const topFocusedTags = computed(() => {
       if (!stats.value.topTags) return [];
       return stats.value.topTags.slice(0, 6);
     });
 
-    // 是否存在活跃筛选条件
     const hasActiveFilters = computed(() => {
       return Boolean(selectedSource.value || selectedTag.value || searchQuery.value);
     });
 
-    // 获取当前选中源的名称
     const selectedSourceName = computed(() => {
       if (!selectedSource.value) return '';
       const found = (stats.value.sources || []).find(s => s.id === selectedSource.value);
@@ -370,6 +369,7 @@ createApp({
       pendingNewCount,
       currentTime,
       showAllSources,
+      showMobileSearch,
       availableCategorySources,
       topFocusedTags,
       hasActiveFilters,
