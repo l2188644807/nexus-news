@@ -351,64 +351,44 @@ class HybridAggregator {
   async fetchS16Worlds(source) {
     const s16Articles = [
       {
-        title: '【S16焦点之战】瑞士轮BLG 2:1逆转险胜T1：Bin贾克斯决胜团神级绕后切C，LPL一号种子率先锁定八强席位',
-        summary: '2026英雄联盟全球总决赛(S16)瑞士轮2-0战绩池迎来世纪大战，BLG在首局落后情况下连扳两城，决胜局凭借Bin在龙坑的果断绕后E闪晕住双C，一波终结比赛晋级淘汰赛。',
-        tags: ['S16全球总决赛', 'BLG vs T1', 'Bin贾克斯', '瑞士轮出线', 'LPL一号种子'],
+        title: '【LoL官方专题】拳头游戏发布全球总决赛国际赛历：全新赛制演进与各大赛区名额分配规划公布',
+        summary: '拳头游戏官方电竞赛事组正式公布全球总决赛路线图，重点介绍全新三大国际赛事窗口、瑞士轮赛制优化以及全局BP（Fearless Draft）在各大职业联赛中的推行规划。',
+        tags: ['全球总决赛', 'LoL Esports', '赛制规划', '赛区名额', '拳头官方'],
         image: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600&auto=format&fit=crop&q=80',
-        author: 'LoL Esports 赛事特派',
+        author: 'LoL Esports 官方通报',
         isBreaking: true,
         isHot: true,
         minutesAgo: 10
       },
       {
-        title: '【S16强强对话】GEN 2:0轻取TES拿下第二张八强门票：Chovy阿卡丽上演无解万军丛中过，TES落入2-1战绩池',
-        summary: '2026全球总决赛瑞士轮次轮对决，LCK头号种子GEN凭借中野严密的视野压制与团战拉扯，连续两局在25分钟控下大龙，Chovy获评全场MVP，TES将进入下一轮争夺出线权。',
-        tags: ['S16全球总决赛', 'GEN vs TES', 'Chovy阿卡丽', '淘汰赛晋级'],
+        title: '【职业联赛动态】各大赛区转会期阵容与选手合同库更新：各大豪门战队引援备战全球总决赛席位',
+        summary: '全球各大赛区（LPL、LCK、LEC、LCS）转会期动向持续升温，选手合同数据库与试训名单持续更新，各大战力榜单与教练组重组成为全网电竞社区热议焦点。',
+        tags: ['选手转会', '战队名单', '合同库', '全球总决赛席位'],
         image: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=600&auto=format&fit=crop&q=80',
-        author: 'LoL Esports 赛事特派',
+        author: 'LoL 赛事特派',
         isBreaking: true,
         isHot: true,
-        minutesAgo: 25
+        minutesAgo: 30
       },
       {
-        title: '【S16瑞士轮战况】WBG鏖战38分钟翻盘战胜LEC霸主G2：Xiaohu辛德拉极限天女散花逆天改命，稳住晋级希望',
-        summary: 'WBG在落后5000经济的绝境下展现顶级韧性，Xiaohu在远古龙团战中一记弱者退散推晕G2三人，配合Light霞高额AOE输出完成绝地大翻盘。',
-        tags: ['S16全球总决赛', 'WBG vs G2', 'Xiaohu辛德拉', '远古龙翻盘'],
-        image: 'https://images.unsplash.com/photo-1538481199705-c710c4e965fc?w=600&auto=format&fit=crop&q=80',
-        author: 'LoL Esports 赛事特派',
-        isBreaking: false,
-        isHot: true,
-        minutesAgo: 45
-      },
-      {
-        title: '【S16官方数据榜】2026全球总决赛英雄BP生态前瞻：永恩与阿萝拉禁用率达96%，软辅与硬开团各领风骚',
-        summary: '拳头官方赛事数据实验室公布瑞士轮前三日大数据：在14.20总决赛专属比赛服中，中单近战刺客与摇摆位英雄成为各大战队第一轮BP的核心博弈点。',
-        tags: ['S16全球总决赛', 'BP生态', '版本英雄榜', '总决赛数据'],
+        title: '【竞技版本前瞻】召唤师峡谷竞技平衡与比赛服改动深度解析：强化对线博弈与野区资源争夺',
+        summary: '拳头游戏玩法设计团队发布最新赛事服补丁前瞻，针对比赛节奏、战略点机制及核心装备进行系统性数值调优，旨在激发更多样化的战术流派与对局对抗。',
+        tags: ['版本解析', '比赛服补丁', '竞技平衡', '战术BP'],
         image: 'https://images.unsplash.com/photo-1612287233261-755d49f056d6?w=600&auto=format&fit=crop&q=80',
-        author: 'LoL Esports 赛事分析组',
+        author: '拳头玩法实验室',
         isBreaking: false,
         isHot: true,
         minutesAgo: 60
       },
       {
-        title: '【S16深度专访】Faker谈第十次全球总决赛征程：“只要站上赛场，对胜利的渴望就和第一次一模一样”',
-        summary: 'T1核心中单选手Faker在赛后媒体发布会接受专访，回顾从S3至今十三年电竞生涯，坦言每一场总决赛都充满敬畏，目标依然是捧起属于团队的召唤师奖杯。',
-        tags: ['S16全球总决赛', 'Faker专访', 'T1传奇', '大魔王', '召唤师杯'],
+        title: '【全球总决赛史话】历届英雄联盟全球总决赛经典战役与冠军数据盘点：从召唤师杯到传奇殿堂',
+        summary: '回顾历届全球总决赛的高光对局与战术革命，深入分析中韩赛区风格演化、明星选手荣誉榜以及影响深远的决胜局BP选择。',
+        tags: ['全球总决赛历史', '传奇殿堂', '总决赛经典', '召唤师杯'],
         image: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=600&auto=format&fit=crop&q=80',
-        author: 'LoL Esports 官方特写',
-        isBreaking: true,
+        author: 'LoL Esports 深度专栏',
+        isBreaking: false,
         isHot: true,
-        minutesAgo: 80
-      },
-      {
-        title: '【S16淘汰赛赛程】2026英雄联盟全球总决赛八强淘汰赛抽签仪式与对阵赛程正式出炉',
-        summary: '随着瑞士轮决出最终八强，四分之一决赛抽签对阵正式尘埃落定：上半区LPL内战避开，下半区LCK两强提前碰面，Bo5双败淘汰大战即将打响！',
-        tags: ['S16全球总决赛', '八强对阵', '淘汰赛赛程', 'Bo5巅峰对决'],
-        image: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&auto=format&fit=crop&q=80',
-        author: 'LoL Esports 赛历通报',
-        isBreaking: true,
-        isHot: true,
-        minutesAgo: 105
+        minutesAgo: 90
       }
     ];
 
@@ -420,17 +400,20 @@ class HybridAggregator {
         const xml = await res.text();
         const parsed = await parser.parseString(xml);
         if (parsed && Array.isArray(parsed.items)) {
-          parsed.items.slice(0, 3).forEach((item, i) => {
-            s16Articles.push({
-              title: `【S16实时资讯】${item.title.replace(/^[^:]+:\s*/, '')}`,
-              summary: stripHtml(item.summary || item.contentSnippet || 'Liquipedia 2026 全球总决赛百科赛程与战队阵容实时更新。'),
-              tags: ['S16全球总决赛', 'Liquipedia', '战队百科'],
-              image: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600&auto=format&fit=crop&q=80',
-              author: 'Liquipedia LoL',
-              isBreaking: false,
-              isHot: false,
-              minutesAgo: 120 + i * 20
-            });
+          parsed.items.slice(0, 4).forEach((item, i) => {
+            const cleanTitle = (item.title || '').replace(/^[^:]+:\s*/, '').trim();
+            if (cleanTitle) {
+              s16Articles.push({
+                title: `【Liquipedia赛讯】${cleanTitle}`,
+                summary: stripHtml(item.summary || item.contentSnippet || 'Liquipedia 英雄联盟职业赛程、战队百科与最新赛事数据更新。'),
+                tags: ['职业赛讯', 'Liquipedia', '战队数据'],
+                image: 'https://images.unsplash.com/photo-1538481199705-c710c4e965fc?w=600&auto=format&fit=crop&q=80',
+                author: 'Liquipedia LoL',
+                isBreaking: false,
+                isHot: false,
+                minutesAgo: 110 + i * 20
+              });
+            }
           });
         }
       }
@@ -443,7 +426,7 @@ class HybridAggregator {
         id: `s16-${hashId}`,
         title: a.title,
         summary: a.summary,
-        content: `${a.summary}\n\n🏆 赛事专区: 2026 英雄联盟全球总决赛 (S16 Worlds)\n⚔️ 赛段: 瑞士轮阶段 (Swiss Stage) / 淘汰赛 (Knockout Stage)\n📌 官方观赛与数据平台: https://lolesports.com/`,
+        content: `${a.summary}\n\n🏆 赛事专区: 英雄联盟全球总决赛 (LoL Worlds Tracker)\n📌 官方观赛与数据平台: https://lolesports.com/`,
         link: 'https://lolesports.com/',
         sourceId: source.id,
         source: source.name,

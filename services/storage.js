@@ -268,16 +268,16 @@ const CHANNEL_SEEDS = [
   // ================= 2. 电竞模块 =================
   {
     id: 'seed-s16-1',
-    title: '【S16全球总决赛】瑞士轮BLG 2:1力克T1率先挺进八强：Bin贾克斯决胜团神级绕后切C，LPL一号种子全胜领跑',
-    summary: '2026英雄联盟全球总决赛瑞士轮2-0战绩池巅峰对决！双方鏖战三局，决胜局龙坑生死团中Bin贾克斯极限E闪晕住双C，带领队伍完成零换四一波推平基地，成为首支斩获八强淘汰赛门票的战队。',
+    title: '【LoL全球总决赛官方专题】拳头游戏发布全球电竞赛事赛历与前瞻：全球三大国际赛事窗口与席位规划',
+    summary: '拳头游戏官方电竞赛事组正式公布最新全球总决赛赛历与赛区名额分配，重点介绍全新赛制演进、瑞士轮赛制优化与各大职业联赛席位争夺战，全球各大赛区顶级战队开启新一轮征程。',
     link: 'https://lolesports.com/',
     sourceId: 's16_worlds',
     source: '2026英雄联盟全球总决赛 (S16)',
     category: 'esports',
     categoryLabel: '实时电竞',
-    pubDate: new Date(Date.now() - 4 * 60 * 1000).toISOString(),
-    timestamp: Date.now() - 4 * 60 * 1000,
-    tags: ['S16全球总决赛', 'BLG胜T1', 'Bin贾克斯', '瑞士轮出线', 'LPL一号种子'],
+    pubDate: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
+    timestamp: Date.now() - 10 * 60 * 1000,
+    tags: ['全球总决赛', 'LoL Esports', '赛历前瞻', '赛区席位', '拳头官方'],
     image: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600&auto=format&fit=crop&q=80',
     isBreaking: true,
     isHot: true
