@@ -623,13 +623,15 @@
             </button>
 
             <div v-if="showAllSources" class="max-h-56 overflow-y-auto space-y-1 text-xs pt-1">
-              <div v-for="src in stats.sources" :key="src.id" class="flex items-center justify-between p-1.5 rounded bg-slate-50 dark:bg-slate-800 text-[11px]">
+              <div v-for="src in stats.sources" :key="src.id" class="flex items-center justify-between p-1.5 rounded bg-slate-50 dark:bg-slate-800 text-[11px]" :title="src.error ? `采集异常: ${src.error}` : src.name">
                 <div class="flex items-center gap-1.5 truncate max-w-[170px]">
-                  <span :class="src.status === 'online' ? 'bg-emerald-500' : 'bg-amber-500'" class="w-1.5 h-1.5 rounded-full shrink-0"></span>
+                  <span :class="src.status === 'online' ? 'bg-emerald-500' : (src.status === 'error' ? 'bg-red-500' : 'bg-amber-400')" class="w-1.5 h-1.5 rounded-full shrink-0"></span>
                   <span class="truncate text-slate-700 dark:text-slate-300">{{ src.name }}</span>
                 </div>
                 <div class="flex items-center gap-2">
-                  <span class="text-[10px] text-slate-400">{{ src.itemCount || 0 }}篇</span>
+                  <span v-if="src.status === 'error'" class="text-[10px] text-red-500 font-medium">连接受阻</span>
+                  <span v-else-if="src.status === 'empty'" class="text-[10px] text-amber-500">暂无新稿</span>
+                  <span v-else class="text-[10px] text-slate-400">{{ src.itemCount || 0 }}篇</span>
                   <span class="text-slate-400 font-mono text-[10px]">{{ src.latencyMs || 0 }}ms</span>
                 </div>
               </div>
@@ -715,7 +717,12 @@
             target="_blank" 
             class="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-sm transition active:scale-95"
           >
-            <span>直达【{{ selectedArticle.source }}】原文报道</span>
+            <span v-if="selectedArticle.link && selectedArticle.link.includes('news.google.com')">
+              直达【{{ selectedArticle.source }}】报道全文 (官方转引)
+            </span>
+            <span v-else>
+              直达【{{ selectedArticle.source }}】原文报道
+            </span>
             <icon name="external-link" class="w-3.5 h-3.5"></icon>
           </a>
         </div>

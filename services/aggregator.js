@@ -469,7 +469,7 @@ class HybridAggregator {
         });
 
         sseManager.broadcast('ticker_update', storage.getTicker());
-        sseManager.broadcast('stats_update', storage.getStats(sseManager.clients.size));
+        sseManager.broadcast('stats_update', storage.getStats(sseManager.getClientCount()));
       }
 
       return {

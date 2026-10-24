@@ -15,6 +15,17 @@ const PORT = process.env.PORT || 3000;
 // 安全与性能增强
 app.disable('x-powered-by');
 app.use(compression());
+
+// 解决 C8: 补充完整安全响应头 (防 MIME 嗅探、点击劫持、限制不安全引用与功能权限)
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; img-src 'self' data: https:; connect-src 'self'; frame-ancestors 'self';");
+  next();
+});
+
 app.use(cors({ origin: '*' }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -126,20 +137,21 @@ app.post('/api/news/refresh', async (req, res) => {
   }
 });
 
-// 定时任务：每 5 分钟全自动增量抓取最新资讯
-const crawlJob = cron.schedule('*/5 * * * *', async () => {
-  console.log('[Scheduler] Running scheduled crawl...');
-  try {
-    await aggregator.runAggregation();
-  } catch (e) {
-    console.error('[Scheduler] Error in scheduled crawl:', e.message);
-  }
-});
-
 // 启动服务器
 let server = null;
+let crawlJob = null;
 
 if (require.main === module) {
+  // 解决 C5: 定时任务仅在独立启动的主服务中运行，单元测试环境不挂定时器
+  crawlJob = cron.schedule('*/5 * * * *', async () => {
+    console.log('[Scheduler] Running scheduled crawl...');
+    try {
+      await aggregator.runAggregation();
+    } catch (e) {
+      console.error('[Scheduler] Error in scheduled crawl:', e.message);
+    }
+  });
+
   server = app.listen(PORT, () => {
     console.log(`====================================================`);
     console.log(`🚀 智讯枢纽 (NEXUS PULSE) 实时资讯聚合系统已启动`);

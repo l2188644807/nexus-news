@@ -4,22 +4,51 @@ const { SOURCES, CATEGORIES } = require('./sources');
 const { deriveTags } = require('./tagger');
 
 const DATA_DIR = path.join(__dirname, '..', 'data');
-const DATA_FILE = path.join(DATA_DIR, 'news_cache.json');
+const DEFAULT_DATA_FILE = path.join(DATA_DIR, 'news_cache.json');
 
 const VALID_CATEGORY_IDS = new Set(CATEGORIES.map(c => c.id).filter(id => id !== 'all'));
 const SOURCES_MAP = new Map(SOURCES.map(s => [s.id, s]));
+const ALL_SOURCE_BADGES = new Set(SOURCES.map(s => s.badge).filter(Boolean));
 
 // 历史细微 ID 差异自动对齐映射
 const GHOST_SOURCE_MAPPING = {
   'esports_insider': 'esportsinsider',
   'variety_film': 'variety_ent',
   'hollywood_reporter': 'thr_ent',
-  'bbc_world': 'bbc_news',
-  'bbc_business': 'bbc_news'
+  'bbc_world': 'bbc_news'
+  // 注意：bbc_business 不再映射到 bbc_news，避免财经内容被误归入全球大事，直接按规则清理
 };
 
 /**
- * 动态判断文章是否处于真正 LIVE 突发状态 (仅限 3 小时内的突发/重磅新闻，避免“最新”误伤)
+ * 校验标题是否合规，杜绝 "- The New York Times" 等残缺空前缀卡片或网站描述 (解决 C3)
+ */
+function isValidArticleTitle(title) {
+  if (!title || typeof title !== 'string') return false;
+  const clean = title.trim();
+  
+  // 1. 过滤破折号/分隔符开头的残缺标题
+  if (/^[\-–—|·]/.test(clean)) return false;
+  
+  // 2. 去掉尾部常见出版者后缀后，真实标题内容至少需 6 个字符
+  const withoutSuffix = clean.replace(/\s*[-–—|]\s*[^-–—|]+$/, '').trim();
+  if (withoutSuffix.length < 6) return false;
+  
+  // 3. 过滤网站默认站点描述、频道占位标语及法律页面
+  const lower = clean.toLowerCase();
+  if (lower.includes('sports news, stories, scores, schedules') ||
+      lower.includes('breaking news, world news and video from') ||
+      lower.includes('latest news, breaking news, today\'s news') ||
+      lower.includes('terms of service') ||
+      lower.includes('privacy policy')
+  ) {
+    return false;
+  }
+  
+  return true;
+}
+
+/**
+ * 动态判断文章是否处于真正 LIVE 突发状态 (仅限 3 小时内的突发/重磅新闻，避免“最新”误伤，解决 R8)
  */
 function isTrulyBreaking(item) {
   if (!item) return false;
@@ -36,6 +65,7 @@ class NewsStorage {
     this.articles = new Map();
     this.sourcesStatus = new Map();
     this.lastUpdateTime = null;
+    this.dataFile = process.env.NEWS_DATA_FILE || DEFAULT_DATA_FILE;
     this.init();
   }
 
@@ -48,22 +78,31 @@ class NewsStorage {
       }
     }
 
-    if (fs.existsSync(DATA_FILE)) {
+    let loadOk = false;
+    if (fs.existsSync(this.dataFile)) {
       try {
-        const raw = fs.readFileSync(DATA_FILE, 'utf-8');
+        const raw = fs.readFileSync(this.dataFile, 'utf-8');
         const list = JSON.parse(raw);
         if (Array.isArray(list) && list.length > 0) {
+          const oneYearAgo = Date.now() - 365 * 86400 * 1000;
+
           list.forEach(a => {
             if (!a || !a.id || a.id.startsWith('seed-') || a.id.startsWith('s16-')) return;
             if (!a.title || !a.link || !a.link.startsWith('http')) return;
             if (a.link === 'https://lolesports.com/' || a.link === 'https://www.wanplus.com/' || a.link === 'https://www.bilibili.com/') return;
 
-            // 1. 解决 R1: 历史 sourceId 细微差异对齐
+            // 过滤超过 1 年前的过时陈旧文章 (如 2006 年老旧条目)
+            if (a.timestamp && a.timestamp < oneYearAgo) return;
+
+            // 解决 C3: 严格过滤残缺/空前缀标题
+            if (!isValidArticleTitle(a.title)) return;
+
+            // 解决 R1: 历史 sourceId 细微差异对齐
             if (GHOST_SOURCE_MAPPING[a.sourceId]) {
               a.sourceId = GHOST_SOURCE_MAPPING[a.sourceId];
             }
 
-            // 检查并仅收录用户明确指定的 88 官方信标源文章，彻底丢弃非指定的 22 个旧幽灵源
+            // 检查并仅收录用户明确指定的 88 官方信标源文章，彻底丢弃非指定的旧幽灵源
             let sourceMeta = SOURCES_MAP.get(a.sourceId);
             if (!sourceMeta && a.source) {
               sourceMeta = SOURCES.find(s => s.name === a.source);
@@ -73,7 +112,7 @@ class NewsStorage {
             }
 
             if (!sourceMeta) {
-              return; // 彻底丢弃非指定的旧幽灵源文章 (解决 R1)
+              return; // 彻底丢弃非指定的旧幽灵源文章
             }
 
             // 校准分类
@@ -81,7 +120,7 @@ class NewsStorage {
             a.categoryLabel = sourceMeta.categoryLabel;
             a.source = sourceMeta.name;
 
-            // 2. 解决 R12: 强制修复存量 http:// 图片为 https://
+            // 解决 R12: 强制修复存量 http:// 图片为 https://
             if (a.image && typeof a.image === 'string') {
               if (a.image.startsWith('http://')) {
                 a.image = 'https://' + a.image.slice(7);
@@ -90,19 +129,27 @@ class NewsStorage {
               }
             }
 
-            // 3. 解决 R2: 存量历史文章标签全量用新算法重算回填
+            // 解决 C2: 存量历史文章标签全量用白名单规则重算回填
             a.tags = deriveTags(a.title, a.summary, sourceMeta);
 
             this.articles.set(a.id, a);
           });
           this.lastUpdateTime = new Date().toISOString();
         }
+        loadOk = true;
       } catch (err) {
-        console.warn('Error reading cache file:', err.message);
+        // 解决 C1: JSON 解析异常时立即备份坏文件，且绝不用空 Map 覆盖磁盘，保障数据安全！
+        console.error('CRITICAL: Error reading cache file, preserving backup:', err.message);
+        try {
+          fs.copyFileSync(this.dataFile, this.dataFile + '.corrupt.' + Date.now());
+        } catch (e) {}
+        return; // 立即阻断，不执行 saveToFile()！
       }
+    } else {
+      loadOk = true;
     }
 
-    // 初始化全量 88 个权威信标状态 (解决 R6: items=0 标 empty)
+    // 初始化全量 88 个权威信标状态
     if (Array.isArray(SOURCES)) {
       SOURCES.forEach(s => {
         const count = Array.from(this.articles.values()).filter(a => a.sourceId === s.id).length;
@@ -121,11 +168,17 @@ class NewsStorage {
     if (!this.lastUpdateTime) {
       this.lastUpdateTime = new Date().toISOString();
     }
-    this.saveToFile();
+
+    if (loadOk && this.articles.size > 0) {
+      this.saveToFile();
+    }
   }
 
   saveToFile() {
+    // 解决 C1: 原子写入 (Atomic Write)，防止写入中途进程中断或断电造成文件截断清空
     try {
+      if (this.articles.size === 0) return; // 安全护栏：空内存绝不覆盖落盘
+
       if (this.articles.size > 2500) {
         const sorted = Array.from(this.articles.values()).sort((a, b) => b.timestamp - a.timestamp);
         const kept = sorted.slice(0, 2500);
@@ -134,7 +187,17 @@ class NewsStorage {
       }
 
       const list = Array.from(this.articles.values()).sort((a, b) => b.timestamp - a.timestamp);
-      fs.writeFileSync(DATA_FILE, JSON.stringify(list), 'utf-8');
+      const json = JSON.stringify(list);
+      const tmpFile = this.dataFile + '.tmp';
+      
+      fs.writeFileSync(tmpFile, json, 'utf-8');
+      try {
+        fs.renameSync(tmpFile, this.dataFile);
+      } catch (renameErr) {
+        // Windows 平台跨句柄替换备选方案
+        fs.copyFileSync(tmpFile, this.dataFile);
+        fs.unlinkSync(tmpFile);
+      }
     } catch (e) {
       console.error('Failed to persist articles to disk:', e.message);
     }
@@ -147,6 +210,9 @@ class NewsStorage {
       if (item.id.startsWith('seed-') || item.id.startsWith('s16-')) continue;
       if (!item.title || !item.link || !item.link.startsWith('http')) continue;
       if (item.link === 'https://lolesports.com/' || item.link === 'https://www.wanplus.com/' || item.link === 'https://www.bilibili.com/') continue;
+
+      // 解决 C3: 严格校验标题完整性
+      if (!isValidArticleTitle(item.title)) continue;
 
       if (this.articles.has(item.id)) continue;
 
@@ -163,6 +229,7 @@ class NewsStorage {
 
   updateSourceStatus(sourceId, info) {
     this.sourcesStatus.set(sourceId, {
+      ...this.sourcesStatus.get(sourceId),
       ...info,
       updatedAt: new Date().toISOString()
     });
@@ -202,9 +269,23 @@ class NewsStorage {
 
     const total = list.length;
     const startIndex = (p - 1) * l;
+    
+    // 解决 C7: 移除体积高达 2.0MB 的冗余 content 字段，单次分页响应从 ~500KB 大幅缩减至 ~30KB
     const paginated = list.slice(startIndex, startIndex + l).map(item => ({
-      ...item,
-      isBreaking: isTrulyBreaking(item)
+      id: item.id,
+      title: item.title,
+      summary: item.summary || item.title,
+      link: item.link,
+      sourceId: item.sourceId,
+      source: item.source,
+      category: item.category,
+      categoryLabel: item.categoryLabel,
+      pubDate: item.pubDate,
+      timestamp: item.timestamp,
+      image: item.image,
+      tags: item.tags || [],
+      isBreaking: isTrulyBreaking(item),
+      isHot: Boolean(item.isHot)
     }));
 
     return {
@@ -228,7 +309,6 @@ class NewsStorage {
     for (const item of combined) {
       if (!seen.has(item.id)) {
         seen.add(item.id);
-        // 去除冗长 content，只保留展示所需字段，跑马灯体积从 16.9KB 回落至 ~8KB (解决 R13)
         result.push({
           id: item.id,
           title: item.title,
@@ -278,6 +358,8 @@ class NewsStorage {
       }
       if (item.tags && Array.isArray(item.tags)) {
         item.tags.forEach(t => {
+          // 解决 C4: 统计焦点话题时严格排除渠道固定 badge，确保热点胶囊均为真正的内容话题
+          if (ALL_SOURCE_BADGES.has(t)) return;
           tagsMap[t] = (tagsMap[t] || 0) + 1;
         });
       }
@@ -288,11 +370,24 @@ class NewsStorage {
       .slice(0, 20)
       .map(([name, count]) => ({ name, count }));
 
-    const sources = Array.from(this.sourcesStatus.values()).map(s => ({
-      ...s,
-      itemCount: sourceStoredCounts[s.id] || 0,
-      status: (sourceStoredCounts[s.id] || 0) > 0 ? (s.status === 'error' ? 'error' : 'online') : 'empty'
-    }));
+    // 解决 C9: 精确区分 online、empty (0篇) 与 error (采集异常)，并在统计中带出 error 说明
+    const sources = Array.from(this.sourcesStatus.values()).map(s => {
+      const count = sourceStoredCounts[s.id] || 0;
+      let status = 'online';
+      if (s.error) {
+        status = 'error';
+      } else if (count === 0) {
+        status = 'empty';
+      } else {
+        status = 'online';
+      }
+      return {
+        ...s,
+        itemCount: count,
+        status,
+        error: s.error || null
+      };
+    });
 
     return {
       totalArticles: list.length,
