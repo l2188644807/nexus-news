@@ -1,12 +1,15 @@
-const { createApp, ref, computed, onMounted, nextTick } = Vue;
+const { createApp, ref, computed, onMounted, onBeforeUnmount } = Vue;
 
-createApp({
+const app = createApp({
   setup() {
     const articles = ref([]);
     const tickerItems = ref([]);
     const sourcesList = ref([]);
     const showAllSources = ref(false);
     const showMobileSearch = ref(false);
+    const astronomySpotlight = ref([]);
+    const sportsSpotlight = ref([]);
+
     const stats = ref({
       totalArticles: 0,
       categoryCounts: {
@@ -46,6 +49,10 @@ createApp({
     const pendingNewCount = ref(0);
     const currentTime = ref('');
 
+    let clockTimer = null;
+    let sseSource = null;
+    let newsAbortController = null;
+
     // 11 大核心板块配置 (含全新天文学模块)
     const categories = [
       { id: 'all', label: '全部要闻', icon: 'flame' },
@@ -82,15 +89,7 @@ createApp({
     const formatFullTime = (dateStr) => {
       if (!dateStr) return '';
       const d = new Date(dateStr);
-      return d.toLocaleString('zh-CN', { hour12: false });
-    };
-
-    const refreshIcons = () => {
-      nextTick(() => {
-        if (window.lucide) {
-          window.lucide.createIcons();
-        }
-      });
+      return isNaN(d.getTime()) ? '' : d.toLocaleString('zh-CN', { hour12: false });
     };
 
     const showToast = (message, type = 'info') => {
@@ -103,6 +102,13 @@ createApp({
     const fetchNews = async (resetPage = false) => {
       if (resetPage) currentPage.value = 1;
       isLoading.value = true;
+
+      // 竞态保护：取消旧的未完成请求 (解决 P2-27)
+      if (newsAbortController) {
+        newsAbortController.abort();
+      }
+      newsAbortController = new AbortController();
+
       try {
         const params = new URLSearchParams({
           category: currentCategory.value,
@@ -113,7 +119,9 @@ createApp({
           limit: 18
         });
 
-        const res = await fetch(`/api/news?${params.toString()}`);
+        const res = await fetch(`/api/news?${params.toString()}`, {
+          signal: newsAbortController.signal
+        });
         const data = await res.json();
         if (data.success) {
           articles.value = data.data.items;
@@ -122,11 +130,11 @@ createApp({
           pendingNewCount.value = 0;
         }
       } catch (err) {
+        if (err.name === 'AbortError') return;
         console.error('Fetch news error:', err);
         showToast('获取新闻流失败，请重试', 'error');
       } finally {
         isLoading.value = false;
-        refreshIcons();
       }
     };
 
@@ -139,8 +147,6 @@ createApp({
         }
       } catch (err) {
         console.error('Fetch ticker error:', err);
-      } finally {
-        refreshIcons();
       }
     };
 
@@ -149,7 +155,11 @@ createApp({
         const res = await fetch('/api/stats');
         const data = await res.json();
         if (data.success) {
-          stats.value = data.data;
+          stats.value = {
+            ...stats.value,
+            ...data.data,
+            connectedClients: data.data.connectedClients || stats.value.connectedClients || 1
+          };
           sourcesList.value = data.data.sources || [];
         }
       } catch (err) {
@@ -157,10 +167,30 @@ createApp({
       }
     };
 
+    const fetchSpotlights = async () => {
+      try {
+        const [astroRes, sportRes] = await Promise.allSettled([
+          fetch('/api/news?category=astronomy&limit=4'),
+          fetch('/api/news?category=esports&limit=4')
+        ]);
+
+        if (astroRes.status === 'fulfilled') {
+          const astroData = await astroRes.value.json();
+          if (astroData.success) astronomySpotlight.value = astroData.data.items || [];
+        }
+        if (sportRes.status === 'fulfilled') {
+          const sportData = await sportRes.value.json();
+          if (sportData.success) sportsSpotlight.value = sportData.data.items || [];
+        }
+      } catch (e) {
+        console.error('Spotlight fetch error:', e);
+      }
+    };
+
     const forceRefresh = async () => {
       if (isRefreshing.value) return;
       isRefreshing.value = true;
-      showToast('正在向全网 88 个权威媒体与空间天文机构发起全网并发采集...', 'info');
+      showToast('正在向全网 88 个权威媒体与空间天文机构发起并发采集...', 'info');
 
       try {
         const res = await fetch('/api/news/refresh', { method: 'POST' });
@@ -170,56 +200,65 @@ createApp({
           await fetchNews(true);
           await fetchTicker();
           await fetchStats();
+          await fetchSpotlights();
+        } else if (res.status === 409 || data.skipped) {
+          showToast('采集正在后台运行中，请稍候...', 'info');
         } else {
-          showToast(`刷新失败: ${data.error}`, 'error');
+          showToast(`刷新失败: ${data.error || '请求受限'}`, 'error');
         }
       } catch (err) {
         showToast('网络错误，无法触发抓取', 'error');
       } finally {
         isRefreshing.value = false;
-        refreshIcons();
       }
     };
 
     const initSSE = () => {
-      const evtSource = new EventSource('/api/stream');
+      if (sseSource) {
+        sseSource.close();
+      }
+      sseSource = new EventSource('/api/stream');
 
-      evtSource.addEventListener('connected', () => {
+      sseSource.addEventListener('connected', () => {
         sseConnected.value = true;
-        console.log('[SSE] 已连接到智讯枢纽实时推送管道');
       });
 
-      evtSource.addEventListener('new_articles', (event) => {
+      sseSource.addEventListener('new_articles', (event) => {
         try {
           const payload = JSON.parse(event.data);
           pendingNewCount.value += payload.count;
           showToast(`🔔 刚刚收到 ${payload.count} 条最新指定渠道快讯！`, 'success');
           fetchStats();
+          fetchSpotlights();
         } catch (e) {
           console.error('[SSE] Parse new_articles error:', e);
         }
       });
 
-      evtSource.addEventListener('ticker_update', (event) => {
+      sseSource.addEventListener('ticker_update', (event) => {
         try {
           const payload = JSON.parse(event.data);
           tickerItems.value = payload;
-          refreshIcons();
         } catch (e) {
           console.error('[SSE] Parse ticker_update error:', e);
         }
       });
 
-      evtSource.addEventListener('stats_update', (event) => {
+      sseSource.addEventListener('stats_update', (event) => {
         try {
           const payload = JSON.parse(event.data);
-          stats.value = payload;
+          // 增量合并，防止冲掉 connectedClients 或 categoryCounts (解决 P0-5)
+          stats.value = {
+            ...stats.value,
+            ...payload,
+            connectedClients: payload.connectedClients !== undefined ? payload.connectedClients : stats.value.connectedClients
+          };
         } catch (e) {
           console.error('[SSE] Parse stats_update error:', e);
         }
       });
 
-      evtSource.onerror = () => {
+      sseSource.onerror = () => {
         sseConnected.value = false;
       };
     };
@@ -267,15 +306,16 @@ createApp({
     };
 
     const openArticle = (article) => {
-      selectedArticle.value = article;
+      if (!article) return;
+      // 容错：若点击的是跑马灯精简对象，优先从现有列表匹配全字段数据 (解决 P0-4)
+      const full = articles.value.find(a => a.id === article.id);
+      selectedArticle.value = full || article;
       document.body.style.overflow = 'hidden';
-      refreshIcons();
     };
 
     const closeArticle = () => {
       selectedArticle.value = null;
       document.body.style.overflow = '';
-      refreshIcons();
     };
 
     const quickFilterSource = (sourceId) => {
@@ -285,9 +325,28 @@ createApp({
       fetchNews(true);
     };
 
-    const copyLink = (link) => {
-      navigator.clipboard.writeText(link || window.location.href);
-      showToast('原文链接已复制到剪贴板！', 'success');
+    const copyLink = async (link) => {
+      const text = link || window.location.href;
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(text);
+        } else {
+          // 局域网 HTTP 下的剪贴板降级机制 (解决 P2 copyLink 失败)
+          const textArea = document.createElement('textarea');
+          textArea.value = text;
+          textArea.style.position = 'fixed';
+          textArea.style.left = '-999999px';
+          textArea.style.top = '-999999px';
+          document.body.appendChild(textArea);
+          textArea.focus();
+          textArea.select();
+          document.execCommand('copy');
+          textArea.remove();
+        }
+        showToast('原文链接已复制到剪贴板！', 'success');
+      } catch (err) {
+        showToast('请手动复制链接', 'info');
+      }
     };
 
     const toggleTheme = () => {
@@ -297,7 +356,6 @@ createApp({
       } else {
         document.documentElement.classList.remove('dark');
       }
-      refreshIcons();
     };
 
     const startClock = () => {
@@ -306,7 +364,13 @@ createApp({
         currentTime.value = now.toLocaleTimeString('zh-CN', { hour12: false });
       };
       update();
-      setInterval(update, 1000);
+      clockTimer = setInterval(update, 1000);
+    };
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && selectedArticle.value) {
+        closeArticle();
+      }
     };
 
     const heroArticle = computed(() => {
@@ -341,14 +405,35 @@ createApp({
       return found ? found.name : selectedSource.value;
     });
 
+    // 动态信标状态与通道数据计算 (解决 P1-11 写死 88 信标全通道运转)
+    const onlineSourcesCount = computed(() => {
+      return (stats.value.sources || []).filter(s => s.status === 'online').length;
+    });
+
+    const totalSourcesCount = computed(() => {
+      return (stats.value.sources || []).length || 88;
+    });
+
+    const isAllChannelsOnline = computed(() => {
+      return totalSourcesCount.value > 0 && onlineSourcesCount.value === totalSourcesCount.value;
+    });
+
     onMounted(async () => {
       document.documentElement.classList.remove('dark');
       startClock();
+      window.addEventListener('keydown', handleKeyDown);
       await fetchNews();
       await fetchTicker();
       await fetchStats();
+      await fetchSpotlights();
       initSSE();
-      refreshIcons();
+    });
+
+    onBeforeUnmount(() => {
+      if (clockTimer) clearInterval(clockTimer);
+      if (sseSource) sseSource.close();
+      if (newsAbortController) newsAbortController.abort();
+      window.removeEventListener('keydown', handleKeyDown);
     });
 
     return {
@@ -377,9 +462,14 @@ createApp({
       currentTime,
       showAllSources,
       showMobileSearch,
+      astronomySpotlight,
+      sportsSpotlight,
       availableCategorySources,
       topFocusedTags,
       hasActiveFilters,
+      onlineSourcesCount,
+      totalSourcesCount,
+      isAllChannelsOnline,
       timeAgo,
       formatFullTime,
       fetchNews,
@@ -397,4 +487,8 @@ createApp({
       toggleTheme
     };
   }
-}).mount('#app');
+});
+
+// 注册纯原生 NexusIcon 组件，根治 lucide DOM 吃掉/脱离 VDOM 缺陷 (解决 P0-3)
+app.component('icon', NexusIcon);
+app.mount('#app');

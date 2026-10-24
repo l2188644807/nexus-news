@@ -1,6 +1,6 @@
 /**
  * Server-Sent Events (SSE) 实时推流管理中心
- * 用于向所有在线浏览页面毫秒级广播最新抓取的新闻与战况
+ * 用于向所有在线浏览页面毫秒级广播最新抓取的新闻与指标更新
  */
 class SSEManager {
   constructor() {
@@ -24,12 +24,17 @@ class SSEManager {
       'Access-Control-Allow-Origin': '*'
     });
 
-    res.write(`event: connected\ndata: ${JSON.stringify({ message: '智讯枢纽实时流已成功建立', clientCount: this.clients.size + 1 })}\n\n`);
-
     this.clients.add(res);
+
+    // 立即向新连入的客户端发送欢迎与当前客户端总数
+    res.write(`event: connected\ndata: ${JSON.stringify({ message: '智讯枢纽实时流已成功建立', clientCount: this.clients.size })}\n\n`);
+
+    // 广播最新的在线用户数
+    this.broadcast('stats_update', { connectedClients: this.clients.size });
 
     req.on('close', () => {
       this.clients.delete(res);
+      this.broadcast('stats_update', { connectedClients: this.clients.size });
     });
   }
 
@@ -51,6 +56,20 @@ class SSEManager {
 
   getClientCount() {
     return this.clients.size;
+  }
+
+  closeAll() {
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = null;
+    }
+    for (const client of this.clients) {
+      try {
+        client.write('event: shutdown\ndata: {}\n\n');
+        client.end();
+      } catch (_) {}
+    }
+    this.clients.clear();
   }
 }
 

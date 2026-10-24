@@ -21,7 +21,7 @@ const parser = new Parser({
   }
 });
 
-// 各模块主题高质量摄影图库兜底 (含天文学唯美深空摄影)
+// 各模块主题高质量摄影图库兜底 (强制全量采用 HTTPS)
 const CATEGORY_DEFAULT_IMAGES = {
   astronomy: [
     'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=600&auto=format&fit=crop&q=80',
@@ -92,14 +92,20 @@ function getRandomImage(category, seed = '') {
   return list[idx];
 }
 
+function normalizeImageUrl(url) {
+  if (!url || typeof url !== 'string') return null;
+  let clean = url.trim();
+  if (clean.startsWith('//')) clean = 'https:' + clean;
+  else if (clean.startsWith('http://')) clean = 'https://' + clean.slice(7);
+  return clean.startsWith('https://') ? clean : null;
+}
+
 function extractFirstImage(html) {
   if (!html) return null;
   try {
     const $ = cheerio.load(html);
     const src = $('img').first().attr('src');
-    if (src && (src.startsWith('http://') || src.startsWith('https://'))) {
-      return src;
-    }
+    return normalizeImageUrl(src);
   } catch (err) {}
   return null;
 }
@@ -118,6 +124,21 @@ function stripHtml(html, maxLength = 190) {
   }
 }
 
+/**
+ * 单词边界匹配，规避短词误伤 (解决 UFC 出现 'Main Card' 被贴 #AI前沿、F1 出现 'major' 被贴 #CS2 等问题)
+ */
+function matchesKey(text, key) {
+  if (!key) return false;
+  // 中文字符串直接包含匹配
+  if (/[\u4e00-\u9fa5]/.test(key)) {
+    return text.includes(key);
+  }
+  // 英文/字母缩写采用严格词边界 \b
+  const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const reg = new RegExp(`\\b${escaped}\\b`, 'i');
+  return reg.test(text);
+}
+
 function deriveTags(title, summary, source) {
   const text = (title + ' ' + summary).toLowerCase();
   const tags = new Set();
@@ -126,38 +147,38 @@ function deriveTags(title, summary, source) {
 
   const keywordsMap = [
     // 天文学
-    { tag: 'FAST天眼', keys: ['fast', '中国天眼', '脉冲星', '射电'] },
-    { tag: '韦伯空间望远镜', keys: ['jwst', 'webb', '韦伯', '原星系'] },
+    { tag: 'FAST天眼', keys: ['fast', '中国天眼', '脉冲星', '射电望远镜'] },
+    { tag: '韦伯空间望远镜', keys: ['jwst', 'webb', '韦伯望远镜', '原星系'] },
     { tag: '欧空局ESA', keys: ['esa', '欧空局', '欧几里得', '盖亚'] },
     { tag: '系外行星', keys: ['exoplanet', '系外行星', '超级地球', '宜居带'] },
-    { tag: '引力波与黑洞', keys: ['black hole', '黑洞', '引力波', 'gravitational'] },
-    { tag: '深空探测', keys: ['nasa', '深空', '深空测轨', '行星', '小行星', '彗星'] },
-    // 电竞
-    { tag: 'CS2', keys: ['cs2', 'counter-strike', 'hltv', 'major', 'navi', 'faze'] },
-    { tag: '英雄联盟', keys: ['lol', 'league of legends', 'lpl', 'lck', 'faker', 's14'] },
+    { tag: '引力波与黑洞', keys: ['black hole', '黑洞', '引力波', 'gravitational wave'] },
+    { tag: '深空探测', keys: ['nasa', '深空', '深空测轨', '行星探测', '小行星', '彗星'] },
+    // 电竞 (修正 major -> cs2 major，避免普通英文 major 误伤)
+    { tag: 'CS2', keys: ['cs2', 'counter-strike', 'hltv', 'cs2 major', 'cs major', 'navi', 'faze', 's1mple', 'zywoo'] },
+    { tag: '英雄联盟', keys: ['lol', 'league of legends', 'lpl', 'lck', 'faker', 's14', 's15', 's16', '全球总决赛'] },
     { tag: '无畏契约', keys: ['valorant', 'vct', '无畏契约', '瓦罗兰特'] },
     // 游戏
-    { tag: '3A大作', keys: ['steam', 'ps5', 'xbox', 'switch', 'gta', '黑神话', '卡普空'] },
+    { tag: '3A大作', keys: ['steam', 'ps5', 'xbox', 'switch', 'gta', '黑神话', '卡普空', '育碧', '任天堂'] },
     // 国际政经
-    { tag: '国际政经', keys: ['联合国', '气候', '峰会', '总统', '首脑', '外长'] },
+    { tag: '国际政经', keys: ['联合国', '气候峰会', '总统', '首脑峰会', '外长会谈'] },
     // 体育
-    { tag: '欧冠足球', keys: ['欧冠', '足球', '英超', '西甲', '国足', '世界杯'] },
-    { tag: 'NBA体坛', keys: ['nba', '篮球', '詹姆斯', '勇士', '湖人'] },
+    { tag: '欧冠足球', keys: ['欧冠', '英超', '西甲', '德甲', '意甲', '国足', '世界杯'] },
+    { tag: 'NBA体坛', keys: ['nba', '篮球', '詹姆斯', '勇士', '湖人', '凯尔特人'] },
     // 军事
-    { tag: '军工防务', keys: ['防务', '战机', '无人机', '军舰', '导弹', '军演'] },
+    { tag: '军工防务', keys: ['防务', '隐身战机', '无人机', '航空母舰', '驱逐舰', '高超音速', '军演'] },
     // 教育
-    { tag: '招考研招', keys: ['考研', '高考', '高校', '大学', '招生', '教育部'] },
+    { tag: '招考研招', keys: ['考研', '高考', '高校', '大学招生', '教育部'] },
     // 娱乐与影视
     { tag: '文娱独家', keys: ['明星', '演员', '恋情', '首谈', '家庭', '热搜'] },
-    { tag: '院线大片', keys: ['电影', '上映', '票房', '影评', '定档', '好莱坞', 'variety', 'imax'] },
+    { tag: '院线大片', keys: ['电影', '上映', '票房', '影评', '定档', '好莱坞', 'imax'] },
     // 财经
-    { tag: '宏观金融', keys: ['股市', '央行', '降息', '加息', '美元', '贸易', '通胀'] },
-    // 科技
-    { tag: 'AI前沿', keys: ['ai', '大模型', 'gpt', 'openai', '芯片', '算力'] }
+    { tag: '宏观金融', keys: ['股市', '央行', '降息', '加息', '美元汇率', '贸易顺差', '通胀率', 'a股', '港股', '美股'] },
+    // 科技 (严格限定 ai 边界与关键实体)
+    { tag: 'AI前沿', keys: ['ai', '大模型', 'gpt', 'openai', '生成式ai', '芯片', '算力', 'deepseek', 'anthropic', 'llm'] }
   ];
 
   for (const item of keywordsMap) {
-    if (item.keys.some(k => text.includes(k))) {
+    if (item.keys.some(k => matchesKey(text, k))) {
       tags.add(item.tag);
     }
   }
@@ -183,11 +204,21 @@ class HybridAggregator {
       },
       signal: AbortSignal.timeout(9000)
     });
-    let text = await res.text();
-    text = text.replace(/<description>(.*?)<\/description>/gis, (match, content) => {
-      return `<description><![CDATA[${content.replace(/<!\[CDATA\[|\]\]>/g, '')}]]></description>`;
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    let xml = await res.text();
+
+    // 修复不规范 XML/CDATA
+    xml = xml.replace(/&(?!(amp|lt|gt|quot|apos|#\d+|#x[0-9a-fA-F]+);)/g, '&amp;');
+    xml = xml.replace(/<description>([\s\S]*?)<\/description>/gi, (match, content) => {
+      if (content.includes('<![CDATA[')) return match;
+      return `<description><![CDATA[${content}]]></description>`;
     });
-    const feed = await parser.parseString(text);
+    xml = xml.replace(/<title>([\s\S]*?)<\/title>/gi, (match, content) => {
+      if (content.includes('<![CDATA[')) return match;
+      return `<title><![CDATA[${content}]]></title>`;
+    });
+
+    const feed = await parser.parseString(xml);
     return (feed.items || []).slice(0, 15).map(raw => this.formatItem(raw, source));
   }
 
@@ -197,7 +228,7 @@ class HybridAggregator {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
       },
-      signal: AbortSignal.timeout(8000)
+      signal: AbortSignal.timeout(9000)
     });
     const html = await res.text();
     const $ = cheerio.load(html);
@@ -222,12 +253,20 @@ class HybridAggregator {
         }
       }
 
+      // 保持已有文章真实时间戳，防止每次爬取被合成时间顶到最前 (解决 P1-9)
+      const hashId = crypto.createHash('md5').update(href).digest('hex').substring(0, 16);
+      const articleId = `${source.id}-${hashId}`;
+      const existing = storage.articles.get(articleId);
+
+      const timestamp = existing ? existing.timestamp : (Date.now() - items.length * 15 * 60 * 1000);
+      const pubDate = existing ? existing.pubDate : new Date(timestamp).toISOString();
+
       items.push({
         title,
         link: href,
         summary: title,
         content: title,
-        pubDate: new Date(Date.now() - items.length * 15 * 60 * 1000).toISOString(),
+        pubDate,
         author: source.name
       });
 
@@ -243,7 +282,8 @@ class HybridAggregator {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
           'Referer': 'https://www.bilibili.com/'
-        }
+        },
+        signal: AbortSignal.timeout(9000)
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
@@ -260,15 +300,16 @@ class HybridAggregator {
         const desc = v.desc ? v.desc.replace(/<[^>]+>/g, '').trim() : '';
         const summary = `【B站热播 · ${viewCount > 0 ? viewCount + '万播放' : '热门精选'}】UP主: ${upName} | 弹幕: ${danmaku}。${desc || title}`;
 
-        let pic = v.pic || '';
-        if (pic.startsWith('//')) pic = 'https:' + pic;
-        if (!pic) pic = getRandomImage('entertainment', title);
+        let pic = normalizeImageUrl(v.pic) || getRandomImage('entertainment', title);
 
-        const pubDate = v.pubdate ? new Date(v.pubdate * 1000).toISOString() : new Date().toISOString();
-        const timestamp = v.pubdate ? v.pubdate * 1000 : Date.now() - idx * 60000;
+        const articleId = `bilibili-${bvid || idx}`;
+        const existing = storage.articles.get(articleId);
+
+        let timestamp = v.pubdate ? v.pubdate * 1000 : (existing ? existing.timestamp : (Date.now() - idx * 60000));
+        let pubDate = new Date(timestamp).toISOString();
 
         return {
-          id: `bilibili-${bvid || idx}`,
+          id: articleId,
           title: `【B站热门】${title}`,
           summary,
           content: `${summary}\n\n🎬 视频高清直达: https://www.bilibili.com/video/${bvid}\n🏷️ 分区标签: ${v.tname || '热门聚焦'}\n👤 UP主: ${upName}\n📊 实时热度: ${viewCount}万播放 / ${danmaku}条弹幕`,
@@ -282,7 +323,7 @@ class HybridAggregator {
           timestamp,
           image: pic,
           tags: ['B站热门', upName, v.tname || '热门视频', '哔哩哔哩'],
-          isBreaking: idx < 3,
+          isBreaking: false,
           isHot: true
         };
       });
@@ -298,7 +339,8 @@ class HybridAggregator {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
           'Referer': 'https://www.douyin.com/'
-        }
+        },
+        signal: AbortSignal.timeout(9000)
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
@@ -321,10 +363,16 @@ class HybridAggregator {
         const summary = `抖音实时热点聚焦榜第 ${rank} 位 ${label}，当前全网搜索热度指数突破 ${hotIndex}。点击直达抖音专题，探索精选短视频创作与话题讨论。`;
         const link = `https://www.douyin.com/search/${encodeURIComponent(w.word)}`;
         const hashId = crypto.createHash('md5').update(w.word).digest('hex').substring(0, 12);
+        const articleId = `douyin-${hashId}`;
         const image = douyinCovers[idx % douyinCovers.length];
 
+        // 保持已有热榜词首次记录的时间戳，避免每次刷新顶掉正常新闻
+        const existing = storage.articles.get(articleId);
+        const timestamp = existing ? existing.timestamp : (Date.now() - idx * 2 * 60 * 1000);
+        const pubDate = existing ? existing.pubDate : new Date(timestamp).toISOString();
+
         return {
-          id: `douyin-${hashId}`,
+          id: articleId,
           title,
           summary,
           content: `${summary}\n\n🔍 话题关键词: ${w.word}\n🏆 抖音热榜名次: 第 ${rank} 位\n🔥 热度指数: ${hotIndex}\n📱 抖音专栏: ${link}`,
@@ -334,11 +382,11 @@ class HybridAggregator {
           category: source.category,
           categoryLabel: source.categoryLabel,
           author: '抖音热点中心',
-          pubDate: new Date(Date.now() - idx * 2 * 60 * 1000).toISOString(),
-          timestamp: Date.now() - idx * 2 * 60 * 1000,
+          pubDate,
+          timestamp,
           image,
           tags: ['抖音热榜', w.word, `Top${rank}`, '实时热搜'],
-          isBreaking: rank <= 3,
+          isBreaking: false,
           isHot: true
         };
       });
@@ -351,14 +399,15 @@ class HybridAggregator {
   formatItem(raw, source) {
     const uniqueKey = raw.link || raw.guid || raw.title;
     const hashId = crypto.createHash('md5').update(uniqueKey).digest('hex').substring(0, 16);
+    const articleId = `${source.id}-${hashId}`;
 
     let image = null;
-    if (raw.enclosure && raw.enclosure.url && raw.enclosure.url.startsWith('http')) {
-      image = raw.enclosure.url;
+    if (raw.enclosure && raw.enclosure.url) {
+      image = normalizeImageUrl(raw.enclosure.url);
     } else if (raw.mediaContent && raw.mediaContent.$ && raw.mediaContent.$.url) {
-      image = raw.mediaContent.$.url;
+      image = normalizeImageUrl(raw.mediaContent.$.url);
     } else if (raw.mediaThumbnail && raw.mediaThumbnail.$ && raw.mediaThumbnail.$.url) {
-      image = raw.mediaThumbnail.$.url;
+      image = normalizeImageUrl(raw.mediaThumbnail.$.url);
     } else {
       image = extractFirstImage(raw['content:encoded'] || raw.content || raw.description);
     }
@@ -377,11 +426,12 @@ class HybridAggregator {
 
     const title = (raw.title || '最新资讯').trim();
     const tags = deriveTags(title, summary, source);
-    const isBreaking = (Date.now() - timestamp < 3600000) || title.includes('重磅') || title.includes('突发') || title.includes('最新');
+    // isBreaking 由 storage 动态读取评估，这里初始化标记
+    const isBreaking = (Date.now() - timestamp < 3 * 3600000) && (title.includes('重磅') || title.includes('突发') || /breaking/i.test(title));
     const isHot = title.includes('首发') || title.includes('发现') || title.includes('突破') || title.includes('特惠') || isBreaking;
 
     return {
-      id: `${source.id}-${hashId}`,
+      id: articleId,
       title,
       summary,
       content: raw['content:encoded'] || raw.content || summary,
@@ -421,7 +471,7 @@ class HybridAggregator {
         id: source.id,
         name: source.name,
         category: source.category,
-        status: 'online',
+        status: items.length > 0 ? 'online' : 'online',
         latencyMs: latency,
         itemCount: items.length,
         error: null

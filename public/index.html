@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>智讯枢纽 (NEXUS PULSE) - 全网权威实时资讯矩阵</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%232563eb'><circle cx='12' cy='12' r='10'/></svg>">
   
@@ -26,9 +26,9 @@
     }
   </script>
 
-  <!-- Lucide Icons & Vue 3 -->
+  <!-- Vue 3 & 原生 SVG 图标引擎 (完全替换掉不稳定且吃掉 DOM 的外部 lucide 脚本) -->
   <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="icons.js"></script>
   
   <link rel="stylesheet" href="style.css">
 </head>
@@ -43,7 +43,7 @@
         <!-- Logo 与状态指标 -->
         <div class="flex items-center gap-2 sm:gap-3 cursor-pointer select-none shrink-0" @click="setCategory('all')">
           <div class="relative w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-xs">
-            <i data-lucide="compass" class="w-4 h-4 sm:w-5 sm:h-5 text-blue-400"></i>
+            <icon name="compass" class="w-4 h-4 sm:w-5 sm:h-5 text-blue-400"></icon>
             <span class="absolute -top-1 -right-1 flex h-2.5 w-2.5">
               <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
@@ -52,11 +52,11 @@
           <div>
             <div class="flex items-center gap-1.5">
               <span class="font-extrabold text-sm sm:text-base tracking-wider text-slate-900 dark:text-white">NEXUS <span class="text-blue-600">PULSE</span></span>
-              <span class="text-[9px] sm:text-[10px] px-1 py-0.2 rounded bg-slate-100 text-slate-600 font-medium">智讯枢纽</span>
+              <span class="text-[9px] sm:text-[10px] px-1 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium">智讯枢纽</span>
             </div>
             <div class="flex items-center gap-1.5 text-[10px] sm:text-[11px] text-slate-400">
               <span class="live-indicator-dot"></span>
-              <span class="text-slate-500 font-medium hidden xs:inline">{{ sseConnected ? '88个权威信标在线' : '连接数据流...' }}</span>
+              <span class="text-slate-500 font-medium hidden xs:inline">{{ sseConnected ? `${onlineSourcesCount}个权威信标在线` : '连接数据流...' }}</span>
               <span class="text-slate-500 font-medium xs:hidden">{{ sseConnected ? '实时推流中' : '连接中' }}</span>
               <span>•</span>
               <span class="font-mono text-slate-400">{{ currentTime }}</span>
@@ -67,20 +67,20 @@
         <!-- 桌面端搜索栏 -->
         <div class="flex-1 max-w-sm hidden md:block">
           <div class="relative">
-            <i data-lucide="search" class="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+            <icon name="search" class="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></icon>
             <input 
               v-model="searchQuery" 
               @input="onSearchInput"
               type="text" 
               placeholder="搜索S16全球总决赛、B站热门、抖音、NASA、HLTV..." 
-              class="w-full pl-8 pr-7 py-1.5 text-xs rounded-lg bg-slate-100/90 border border-slate-200/70 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-slate-800 placeholder-slate-400 transition"
+              class="w-full pl-8 pr-7 py-1.5 text-xs rounded-lg bg-slate-100/90 dark:bg-slate-800 border border-slate-200/70 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-slate-800 dark:text-slate-100 placeholder-slate-400 transition"
             >
             <button 
               v-if="searchQuery" 
               @click="clearAllFilters"
               class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
             >
-              <i data-lucide="x" class="w-3.5 h-3.5"></i>
+              <icon name="x" class="w-3.5 h-3.5"></icon>
             </button>
           </div>
         </div>
@@ -90,10 +90,10 @@
           <!-- 手机端搜索展开按钮 -->
           <button 
             @click="showMobileSearch = !showMobileSearch"
-            class="md:hidden p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition"
+            class="md:hidden p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300 transition"
             title="搜索"
           >
-            <i :data-lucide="showMobileSearch ? 'x' : 'search'" class="w-4 h-4"></i>
+            <icon :name="showMobileSearch ? 'x' : 'search'" class="w-4 h-4"></icon>
           </button>
 
           <!-- 一键重新抓取 -->
@@ -102,40 +102,40 @@
             :disabled="isRefreshing"
             class="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-900 hover:bg-slate-800 text-white shadow-2xs transition active:scale-95 disabled:opacity-50"
           >
-            <i data-lucide="refresh-cw" :class="{'animate-spin': isRefreshing}" class="w-3.5 h-3.5 text-blue-400"></i>
-            <span class="hidden sm:inline">{{ isRefreshing ? '全网采集抓取中...' : '全网实时刷新' }}</span>
+            <icon name="refresh-cw" :class="{'animate-spin': isRefreshing}" class="w-3.5 h-3.5 text-blue-400"></icon>
+            <span class="hidden sm:inline">{{ isRefreshing ? '全网并发抓取中...' : '全网实时刷新' }}</span>
             <span class="sm:hidden">{{ isRefreshing ? '刷新中' : '刷新' }}</span>
           </button>
 
           <!-- 亮暗模式切换 -->
           <button 
             @click="toggleTheme" 
-            class="p-1.5 sm:p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition"
+            class="p-1.5 sm:p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300 transition"
             title="切换明暗主题"
           >
-            <i :data-lucide="darkMode ? 'sun' : 'moon'" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
+            <icon :name="darkMode ? 'sun' : 'moon'" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></icon>
           </button>
         </div>
 
       </div>
 
       <!-- 手机端下拉展开搜索框 -->
-      <div v-if="showMobileSearch" class="md:hidden px-3 pb-2.5 pt-1 border-t border-slate-100 bg-white">
+      <div v-if="showMobileSearch" class="md:hidden px-3 pb-2.5 pt-1 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
         <div class="relative">
-          <i data-lucide="search" class="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+          <icon name="search" class="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></icon>
           <input 
             v-model="searchQuery" 
             @input="onSearchInput"
             type="text" 
             placeholder="搜索S16全球总决赛、B站热门、抖音、NASA、HLTV..." 
-            class="w-full pl-8 pr-7 py-2 text-xs rounded-lg bg-slate-100 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-slate-800 placeholder-slate-400"
+            class="w-full pl-8 pr-7 py-2 text-xs rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-slate-800 dark:text-slate-100 placeholder-slate-400"
           >
           <button 
             v-if="searchQuery" 
             @click="clearAllFilters"
             class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400"
           >
-            <i data-lucide="x" class="w-3.5 h-3.5"></i>
+            <icon name="x" class="w-3.5 h-3.5"></icon>
           </button>
         </div>
       </div>
@@ -143,26 +143,26 @@
     </header>
 
     <!-- 2. 7x24h 实时快讯跑马灯 (手机端自适应) -->
-    <div class="bg-white border-b border-slate-200/80 text-xs overflow-hidden relative">
+    <div class="bg-white dark:bg-slate-900 border-b border-slate-200/80 dark:border-slate-800 text-xs overflow-hidden relative">
       <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2 flex items-center gap-2.5">
         
-        <div class="flex items-center gap-1 font-bold text-[10px] sm:text-[11px] uppercase tracking-wider text-red-600 bg-red-50 px-2 py-0.5 rounded border border-red-200/70 shrink-0">
+        <div class="flex items-center gap-1 font-bold text-[10px] sm:text-[11px] uppercase tracking-wider text-red-600 bg-red-50 dark:bg-red-950/60 px-2 py-0.5 rounded border border-red-200/70 dark:border-red-900/50 shrink-0">
           <span class="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse"></span>
           <span>快讯</span>
         </div>
 
         <div class="overflow-hidden relative flex-1 whitespace-nowrap">
-          <div class="marquee-track flex items-center gap-6 sm:gap-8 text-slate-600">
+          <div class="marquee-track flex items-center gap-6 sm:gap-8 text-slate-600 dark:text-slate-300">
             <span 
               v-for="(item, idx) in [...tickerItems, ...tickerItems]" 
               :key="idx"
               @click="openArticle(item)"
-              class="inline-flex items-center gap-1.5 sm:gap-2 cursor-pointer hover:text-blue-600 transition"
+              class="inline-flex items-center gap-1.5 sm:gap-2 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition"
             >
-              <span class="px-1.5 py-0.2 rounded text-[10px] bg-slate-100 font-semibold text-slate-600">{{ item.source }}</span>
+              <span class="px-1.5 py-0.2 rounded text-[10px] bg-slate-100 dark:bg-slate-800 font-semibold text-slate-600 dark:text-slate-300">{{ item.source }}</span>
               <span class="font-medium hover:underline text-[11px] sm:text-xs">{{ item.title }}</span>
-              <span class="text-slate-400 text-[10px]">({{ timeAgo(item.time) }})</span>
-              <span class="text-slate-300">•</span>
+              <span class="text-slate-400 text-[10px]">({{ timeAgo(item.time || item.pubDate) }})</span>
+              <span class="text-slate-300 dark:text-slate-600">•</span>
             </span>
           </div>
         </div>
@@ -173,19 +173,19 @@
     <!-- 3. 主界面容器 -->
     <main class="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-3.5 sm:py-5">
 
-      <!-- ================== 核心升级区：去杂乱，手机与桌面双优控制台 ================== -->
+      <!-- ================== 核心控制台：去杂乱，手机与桌面双优 ================== -->
       <div class="mb-4 sm:mb-5 space-y-2.5 sm:space-y-3">
         
-        <!-- 1. 分类主导航 (极简滑动横栏，手机端顺滑横滑) -->
+        <!-- 1. 分类主导航 (极简滑动横栏) -->
         <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 -mx-3 px-3 sm:mx-0 sm:px-0">
           <button 
             v-for="cat in categories" 
             :key="cat.id"
             @click="setCategory(cat.id)"
-            :class="currentCategory === cat.id ? 'bg-slate-900 text-white font-semibold shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 bg-slate-100/80'"
+            :class="currentCategory === cat.id ? 'bg-slate-900 text-white dark:bg-blue-600 font-semibold shadow-xs' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 hover:bg-slate-200/60 bg-slate-100/80 dark:bg-slate-800'"
             class="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm transition shrink-0 active:scale-95"
           >
-            <i :data-lucide="cat.icon" class="w-3.5 h-3.5"></i>
+            <icon :name="cat.icon" class="w-3.5 h-3.5"></icon>
             <span>{{ cat.label }}</span>
             <span 
               v-if="stats.categoryCounts[cat.id] !== undefined"
@@ -197,23 +197,23 @@
           </button>
         </div>
 
-        <!-- 2. 统一整合筛选工具条 (手机端自适应折叠换行，桌面端精致单行) -->
-        <div class="bg-white rounded-xl border border-slate-200/80 p-2 sm:p-2.5 px-3 sm:px-4 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
+        <!-- 2. 统一整合筛选工具条 -->
+        <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800 p-2 sm:p-2.5 px-3 sm:px-4 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
           
           <!-- 左侧：渠道下拉筛选器 + 焦点话题胶囊 -->
           <div class="flex items-center gap-2 sm:gap-3 flex-wrap flex-1 min-w-0">
             
-            <!-- 渠道专属下拉选择菜单 (适配手机触摸与桌面点击) -->
+            <!-- 渠道专属下拉选择菜单 -->
             <div class="flex items-center gap-1.5 w-full sm:w-auto">
               <span class="text-slate-400 text-xs font-medium shrink-0 flex items-center gap-1">
-                <i data-lucide="radio" class="w-3.5 h-3.5 text-blue-600"></i> 渠道:
+                <icon name="radio" class="w-3.5 h-3.5 text-blue-600"></icon> 渠道:
               </span>
               <select 
                 v-model="selectedSource" 
                 @change="onSourceChange"
-                class="clean-select text-xs font-semibold bg-slate-50 hover:bg-slate-100 text-slate-800 border border-slate-200 rounded-lg pl-2.5 pr-7 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer transition shadow-2xs w-full sm:w-auto min-w-[140px]"
+                class="clean-select text-xs font-semibold bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-lg pl-2.5 pr-7 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer transition shadow-2xs w-full sm:w-auto min-w-[140px]"
               >
-                <option value="">全部渠道 ({{ currentCategory === 'all' ? '88个全网信标' : '当前模块' }})</option>
+                <option value="">全部渠道 ({{ currentCategory === 'all' ? `${totalSourcesCount}个全网信标` : '当前模块' }})</option>
                 <option v-for="src in availableCategorySources" :key="src.id" :value="src.id">
                   {{ src.name }} ({{ src.itemCount || 0 }} 篇)
                 </option>
@@ -221,18 +221,18 @@
             </div>
 
             <!-- 分割小线 -->
-            <div class="h-4 w-px bg-slate-200 hidden sm:block"></div>
+            <div class="h-4 w-px bg-slate-200 dark:bg-slate-800 hidden sm:block"></div>
 
-            <!-- 热门话题焦点 (精选核心前 6 个，手机端横向自然滑动) -->
+            <!-- 热门话题焦点 -->
             <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar text-xs w-full sm:w-auto py-0.5">
               <span class="text-slate-400 text-[11px] font-medium shrink-0 flex items-center gap-0.5">
-                <i data-lucide="hash" class="w-3 h-3 text-slate-400"></i> 焦点:
+                <icon name="hash" class="w-3 h-3 text-slate-400"></icon> 焦点:
               </span>
               <button 
                 v-for="tag in topFocusedTags" 
                 :key="tag.name"
                 @click="toggleTag(tag.name)"
-                :class="selectedTag === tag.name ? 'bg-blue-600 text-white font-semibold shadow-2xs' : 'text-slate-600 hover:text-blue-600 hover:bg-blue-50/60 bg-slate-50'"
+                :class="selectedTag === tag.name ? 'bg-blue-600 text-white font-semibold shadow-2xs' : 'text-slate-600 dark:text-slate-300 hover:text-blue-600 hover:bg-blue-50/60 bg-slate-50 dark:bg-slate-800'"
                 class="px-2 py-0.5 rounded text-[11px] sm:text-xs transition shrink-0 active:scale-95"
               >
                 #{{ tag.name }}
@@ -242,10 +242,10 @@
           </div>
 
           <!-- 右侧：活跃筛选指示与统计 -->
-          <div class="flex items-center justify-between sm:justify-end gap-3 text-xs shrink-0 pt-1 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+          <div class="flex items-center justify-between sm:justify-end gap-3 text-xs shrink-0 pt-1 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800">
             
             <div v-if="hasActiveFilters" class="flex items-center gap-1.5">
-              <span class="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-[11px] font-medium border border-blue-100 truncate max-w-[160px]">
+              <span class="px-2 py-0.5 bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 rounded text-[11px] font-medium border border-blue-100 dark:border-blue-900 truncate max-w-[160px]">
                 {{ selectedSourceName || selectedTag || searchQuery }}
               </span>
               <button 
@@ -253,13 +253,13 @@
                 class="text-slate-400 hover:text-red-600 transition flex items-center gap-0.5 font-medium text-[11px]"
                 title="清除所有筛选条件"
               >
-                <i data-lucide="x-circle" class="w-3.5 h-3.5"></i>
+                <icon name="x-circle" class="w-3.5 h-3.5"></icon>
                 <span>重置</span>
               </button>
             </div>
 
             <span class="text-slate-400 font-mono text-[11px] ml-auto">
-              收录 <strong class="text-slate-700 font-semibold">{{ totalCount }}</strong> 篇
+              收录 <strong class="text-slate-700 dark:text-slate-200 font-semibold">{{ totalCount }}</strong> 篇
             </span>
 
           </div>
@@ -282,7 +282,7 @@
         </div>
       </transition>
 
-      <!-- 5. 核心内容区：主信息流 + 侧边栏 (手机单列流畅堆叠，桌面双列网格) -->
+      <!-- 5. 核心内容区：主信息流 + 侧边栏 -->
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-7">
         
         <!-- 左侧主资讯流 (8 列) -->
@@ -302,7 +302,7 @@
               <div class="space-y-1.5 flex-1 min-w-0">
                 <div class="flex items-center gap-2 flex-wrap">
                   <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500 text-slate-950 uppercase tracking-wider shadow-xs">
-                    <i data-lucide="crown" class="w-3 h-3"></i> 英雄联盟全球总决赛
+                    <icon name="crown" class="w-3 h-3"></icon> 英雄联盟全球总决赛
                   </span>
                   <span class="text-xs font-semibold text-blue-200">League of Legends World Championship · 赛事前沿</span>
                   <span class="text-[10px] px-1.5 py-0.2 rounded bg-blue-500/30 text-blue-300 font-mono">官方赛历·战队动态</span>
@@ -328,7 +328,7 @@
                   @click="quickFilterSource('s16_worlds')"
                   class="px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white transition shadow-xs flex items-center gap-1 active:scale-95"
                 >
-                  <i data-lucide="trophy" class="w-3.5 h-3.5"></i>
+                  <icon name="trophy" class="w-3.5 h-3.5"></icon>
                   <span>LoL 赛事专区</span>
                 </button>
                 <button 
@@ -336,7 +336,7 @@
                   class="px-2 sm:px-2.5 py-1.5 rounded-lg text-xs font-medium bg-white/10 hover:bg-white/20 text-white transition flex items-center gap-1 active:scale-95"
                   title="查看B站热门"
                 >
-                  <i data-lucide="tv" class="w-3.5 h-3.5 text-pink-400"></i>
+                  <icon name="tv" class="w-3.5 h-3.5 text-pink-400"></icon>
                   <span class="hidden xs:inline">B站热门</span>
                 </button>
                 <button 
@@ -344,7 +344,7 @@
                   class="px-2 sm:px-2.5 py-1.5 rounded-lg text-xs font-medium bg-white/10 hover:bg-white/20 text-white transition flex items-center gap-1 active:scale-95"
                   title="查看抖音热榜"
                 >
-                  <i data-lucide="video" class="w-3.5 h-3.5 text-cyan-400"></i>
+                  <icon name="video" class="w-3.5 h-3.5 text-cyan-400"></icon>
                   <span class="hidden xs:inline">抖音热榜</span>
                 </button>
               </div>
@@ -352,11 +352,11 @@
             </div>
           </div>
 
-          <!-- 焦点置顶头条卡片 (Hero Card - 手机端画面比例优化) -->
+          <!-- 焦点置顶头条卡片 (Hero Card) -->
           <div 
             v-if="heroArticle && currentPage === 1 && !hasActiveFilters"
             @click="openArticle(heroArticle)"
-            class="relative group rounded-xl overflow-hidden bg-white border border-slate-200/90 cursor-pointer shadow-xs news-card-hover active:scale-[0.99]"
+            class="relative group rounded-xl overflow-hidden bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 cursor-pointer shadow-xs news-card-hover active:scale-[0.99]"
           >
             <div class="aspect-[16/10] sm:aspect-[21/9] w-full relative overflow-hidden bg-slate-900">
               <img 
@@ -397,12 +397,12 @@
             </div>
           </div>
 
-          <!-- 普通资讯网格流 (News Cards Grid - 手机端单列清爽大图卡片) -->
+          <!-- 普通资讯网格流 (Loading 骨架屏) -->
           <div v-if="isLoading" class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
-            <div v-for="n in 6" :key="n" class="bg-white border border-slate-200/80 rounded-xl p-3 sm:p-4 animate-pulse space-y-3">
-              <div class="h-36 sm:h-40 bg-slate-100 rounded-lg"></div>
-              <div class="h-4 bg-slate-100 rounded w-3/4"></div>
-              <div class="h-3 bg-slate-100 rounded w-full"></div>
+            <div v-for="n in 6" :key="n" class="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-3 sm:p-4 animate-pulse space-y-3">
+              <div class="h-36 sm:h-40 bg-slate-100 dark:bg-slate-800 rounded-lg"></div>
+              <div class="h-4 bg-slate-100 dark:bg-slate-800 rounded w-3/4"></div>
+              <div class="h-3 bg-slate-100 dark:bg-slate-800 rounded w-full"></div>
             </div>
           </div>
 
@@ -412,9 +412,9 @@
               v-for="item in feedArticles" 
               :key="item.id"
               @click="openArticle(item)"
-              class="group flex flex-col justify-between bg-white rounded-xl border border-slate-200/80 overflow-hidden cursor-pointer news-card-hover shadow-2xs active:scale-[0.99] transition"
+              class="group flex flex-col justify-between bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800 overflow-hidden cursor-pointer news-card-hover shadow-2xs active:scale-[0.99] transition"
             >
-              <div class="relative aspect-[16/9] overflow-hidden bg-slate-100">
+              <div class="relative aspect-[16/9] overflow-hidden bg-slate-100 dark:bg-slate-800">
                 <img 
                   :src="item.image" 
                   :alt="item.title"
@@ -448,22 +448,22 @@
 
               <div class="p-3 sm:p-3.5 flex-1 flex flex-col justify-between space-y-2">
                 <div class="space-y-1">
-                  <h3 class="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-blue-600 transition-colors line-clamp-2 leading-snug">
+                  <h3 class="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2 leading-snug">
                     {{ item.title }}
                   </h3>
-                  <p class="text-[11px] text-slate-500 line-clamp-2 leading-relaxed">
+                  <p class="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
                     {{ item.summary }}
                   </p>
                 </div>
 
-                <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
+                <div class="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
                   <div class="flex items-center gap-1 overflow-hidden">
-                    <span v-for="tag in item.tags.slice(0, 2)" :key="tag" class="text-[10px] px-1.5 py-0.2 rounded bg-slate-100 text-slate-600">
+                    <span v-for="tag in item.tags.slice(0, 2)" :key="tag" class="text-[10px] px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
                       #{{ tag }}
                     </span>
                   </div>
-                  <span class="text-blue-600 font-semibold group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5">
-                    速览 <i data-lucide="chevron-right" class="w-3 h-3"></i>
+                  <span class="text-blue-600 dark:text-blue-400 font-semibold group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5">
+                    速览 <icon name="chevron-right" class="w-3 h-3"></icon>
                   </span>
                 </div>
               </div>
@@ -472,19 +472,19 @@
           </div>
 
           <!-- 空数据状态 -->
-          <div v-else class="text-center py-12 bg-white rounded-xl border border-dashed border-slate-200 space-y-2">
-            <i data-lucide="inbox" class="w-9 h-9 mx-auto text-slate-300"></i>
-            <h4 class="font-semibold text-xs text-slate-700">暂无匹配资讯</h4>
+          <div v-else class="text-center py-12 bg-white dark:bg-slate-900 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 space-y-2">
+            <icon name="inbox" class="w-9 h-9 mx-auto text-slate-300 dark:text-slate-600"></icon>
+            <h4 class="font-semibold text-xs text-slate-700 dark:text-slate-300">暂无匹配资讯</h4>
             <p class="text-[11px] text-slate-400">可尝试清除筛选条件，或点击右上角“全网实时刷新”</p>
             <button @click="clearAllFilters" class="px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">重置所有筛选</button>
           </div>
 
           <!-- 手机端与桌面端自适应分页栏 -->
-          <div v-if="totalPages > 1" class="flex items-center justify-between pt-3 border-t border-slate-200">
+          <div v-if="totalPages > 1" class="flex items-center justify-between pt-3 border-t border-slate-200 dark:border-slate-800">
             <button 
               @click="changePage(currentPage - 1)" 
               :disabled="currentPage === 1"
-              class="px-3 py-1.5 text-xs font-medium rounded-lg bg-white border border-slate-200 disabled:opacity-40 hover:bg-slate-50 transition shadow-2xs active:scale-95"
+              class="px-3 py-1.5 text-xs font-medium rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 disabled:opacity-40 hover:bg-slate-50 transition shadow-2xs active:scale-95"
             >
               上一页
             </button>
@@ -494,7 +494,7 @@
             <button 
               @click="changePage(currentPage + 1)" 
               :disabled="currentPage === totalPages"
-              class="px-3 py-1.5 text-xs font-medium rounded-lg bg-white border border-slate-200 disabled:opacity-40 hover:bg-slate-50 transition shadow-2xs active:scale-95"
+              class="px-3 py-1.5 text-xs font-medium rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 disabled:opacity-40 hover:bg-slate-50 transition shadow-2xs active:scale-95"
             >
               下一页
             </button>
@@ -505,113 +505,130 @@
         <!-- 右侧侧边栏 (4 列)：手机端下沉排版，高价值精选 -->
         <aside class="lg:col-span-4 space-y-4 sm:space-y-5">
 
-          <!-- 1. 天文学与深空前沿看点 (Astronomy Spotlight) -->
-          <div class="bg-white rounded-xl border border-slate-200/80 p-3.5 sm:p-4 shadow-2xs space-y-2.5 sm:space-y-3">
+          <!-- 1. 天文学与深空前沿看点 (解决 P2-26 独立加载 spotlight 与优雅空态) -->
+          <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800 p-3.5 sm:p-4 shadow-2xs space-y-2.5 sm:space-y-3">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-1.5">
-                <span class="p-1 rounded bg-indigo-50 text-indigo-600">
-                  <i data-lucide="telescope" class="w-3.5 h-3.5"></i>
+                <span class="p-1 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
+                  <icon name="telescope" class="w-3.5 h-3.5"></icon>
                 </span>
-                <h3 class="font-bold text-xs text-slate-900">天文学 & 深空前沿</h3>
+                <h3 class="font-bold text-xs text-slate-900 dark:text-slate-100">天文学 & 深空前沿</h3>
               </div>
-              <button @click="setCategory('astronomy')" class="text-[11px] text-blue-600 hover:underline">专区</button>
+              <button @click="setCategory('astronomy')" class="text-[11px] text-blue-600 dark:text-blue-400 hover:underline">专区</button>
             </div>
 
-            <div class="space-y-2">
+            <div v-if="astronomySpotlight.length > 0" class="space-y-2">
               <div 
-                v-for="item in articles.filter(a => a.category === 'astronomy').slice(0, 4)" 
+                v-for="item in astronomySpotlight" 
                 :key="item.id"
                 @click="openArticle(item)"
-                class="p-2 rounded-lg bg-slate-50 hover:bg-blue-50/50 border border-slate-100 cursor-pointer transition flex gap-2.5 active:scale-[0.99]"
+                class="p-2 rounded-lg bg-slate-50 dark:bg-slate-800 hover:bg-blue-50/50 dark:hover:bg-slate-750 border border-slate-100 dark:border-slate-700/60 cursor-pointer transition flex gap-2.5 active:scale-[0.99]"
               >
                 <div class="w-12 h-12 rounded overflow-hidden bg-slate-900 shrink-0">
                   <img :src="item.image" class="w-full h-full object-cover">
                 </div>
                 <div class="flex-1 min-w-0 space-y-0.5">
-                  <h4 class="text-xs font-semibold line-clamp-1 text-slate-800 hover:text-blue-600">{{ item.title }}</h4>
+                  <h4 class="text-xs font-semibold line-clamp-1 text-slate-800 dark:text-slate-200 hover:text-blue-600">{{ item.title }}</h4>
                   <div class="flex items-center justify-between text-[10px] text-slate-400">
-                    <span class="font-medium text-slate-600">{{ item.source }}</span>
+                    <span class="font-medium text-slate-600 dark:text-slate-400">{{ item.source }}</span>
                     <span>{{ timeAgo(item.pubDate) }}</span>
                   </div>
                 </div>
               </div>
             </div>
+            <div v-else class="text-center py-4 text-xs text-slate-400">
+              暂无天文学更新，点击刷新同步
+            </div>
           </div>
 
-          <!-- 2. 体育竞技与电竞赛况 -->
-          <div class="bg-white rounded-xl border border-slate-200/80 p-3.5 sm:p-4 shadow-2xs space-y-2.5 sm:space-y-3">
+          <!-- 2. 体育竞技与电竞赛况 (独立加载 spotlight 与优雅空态) -->
+          <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800 p-3.5 sm:p-4 shadow-2xs space-y-2.5 sm:space-y-3">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-1.5">
-                <span class="p-1 rounded bg-orange-50 text-orange-600">
-                  <i data-lucide="trophy" class="w-3.5 h-3.5"></i>
+                <span class="p-1 rounded bg-orange-50 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400">
+                  <icon name="trophy" class="w-3.5 h-3.5"></icon>
                 </span>
-                <h3 class="font-bold text-xs text-slate-900">体坛竞技 & 实时电竞</h3>
+                <h3 class="font-bold text-xs text-slate-900 dark:text-slate-100">体坛竞技 & 实时电竞</h3>
               </div>
-              <button @click="setCategory('esports')" class="text-[11px] text-blue-600 hover:underline">专区</button>
+              <button @click="setCategory('esports')" class="text-[11px] text-blue-600 dark:text-blue-400 hover:underline">专区</button>
             </div>
 
-            <div class="space-y-2">
+            <div v-if="sportsSpotlight.length > 0" class="space-y-2">
               <div 
-                v-for="item in articles.filter(a => ['sports', 'esports'].includes(a.category)).slice(0, 3)" 
+                v-for="item in sportsSpotlight" 
                 :key="item.id"
                 @click="openArticle(item)"
-                class="p-2 rounded-lg bg-slate-50 hover:bg-blue-50/50 border border-slate-100 cursor-pointer transition flex gap-2.5 active:scale-[0.99]"
+                class="p-2 rounded-lg bg-slate-50 dark:bg-slate-800 hover:bg-blue-50/50 dark:hover:bg-slate-750 border border-slate-100 dark:border-slate-700/60 cursor-pointer transition flex gap-2.5 active:scale-[0.99]"
               >
-                <div class="w-12 h-12 rounded overflow-hidden bg-slate-200 shrink-0">
+                <div class="w-12 h-12 rounded overflow-hidden bg-slate-200 dark:bg-slate-700 shrink-0">
                   <img :src="item.image" class="w-full h-full object-cover">
                 </div>
                 <div class="flex-1 min-w-0 space-y-0.5">
-                  <h4 class="text-xs font-semibold line-clamp-1 text-slate-800 hover:text-blue-600">{{ item.title }}</h4>
+                  <h4 class="text-xs font-semibold line-clamp-1 text-slate-800 dark:text-slate-200 hover:text-blue-600">{{ item.title }}</h4>
                   <div class="flex items-center justify-between text-[10px] text-slate-400">
-                    <span class="font-medium text-slate-600">{{ item.source }}</span>
+                    <span class="font-medium text-slate-600 dark:text-slate-400">{{ item.source }}</span>
                     <span>{{ timeAgo(item.pubDate) }}</span>
                   </div>
                 </div>
               </div>
             </div>
+            <div v-else class="text-center py-4 text-xs text-slate-400">
+              暂无赛况更新，点击刷新同步
+            </div>
           </div>
 
-          <!-- 3. 数据源状态看板 (折叠式) -->
-          <div class="bg-white rounded-xl border border-slate-200/80 p-3.5 sm:p-4 shadow-2xs space-y-2.5 sm:space-y-3">
+          <!-- 3. 数据源状态看板 (解决 P1-11 动态计算在线信标数与通道运行状态) -->
+          <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800 p-3.5 sm:p-4 shadow-2xs space-y-2.5 sm:space-y-3">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-1.5">
-                <span class="p-1 rounded bg-emerald-50 text-emerald-600">
-                  <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
+                <span class="p-1 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400">
+                  <icon name="shield-check" class="w-3.5 h-3.5"></icon>
                 </span>
-                <h3 class="font-bold text-xs text-slate-900">全网信标巡检</h3>
+                <h3 class="font-bold text-xs text-slate-900 dark:text-slate-100">全网信标巡检</h3>
               </div>
-              <span class="text-[10px] px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 font-medium">88 信标就绪</span>
+              <span class="text-[10px] px-1.5 py-0.2 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-medium">
+                {{ onlineSourcesCount }} / {{ totalSourcesCount }} 信标就绪
+              </span>
             </div>
 
-            <div class="p-2.5 rounded-lg bg-slate-50 border border-slate-100 text-xs space-y-1.5">
-              <div class="flex items-center justify-between text-slate-600 text-[11px]">
+            <div class="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 text-xs space-y-1.5">
+              <div class="flex items-center justify-between text-slate-600 dark:text-slate-300 text-[11px]">
                 <span>管道状态:</span>
-                <span class="text-emerald-600 font-medium flex items-center gap-1">
+                <span v-if="isAllChannelsOnline" class="text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
                   <span class="live-indicator-dot"></span> 全通道正常运转
                 </span>
+                <span v-else class="text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> 巡检中 ({{ onlineSourcesCount }}/{{ totalSourcesCount }} 在线)
+                </span>
               </div>
-              <div class="flex items-center justify-between text-slate-600 text-[11px]">
+              <div class="flex items-center justify-between text-slate-600 dark:text-slate-300 text-[11px]">
                 <span>自动轮询:</span>
                 <span class="text-slate-500 font-mono">每 5 分钟并发更新</span>
               </div>
-              <div class="flex items-center justify-between text-slate-600 text-[11px]">
+              <div class="flex items-center justify-between text-slate-600 dark:text-slate-300 text-[11px]">
                 <span>在线推流:</span>
-                <span class="text-slate-700 font-mono font-medium">{{ stats.connectedClients }} 客户端</span>
+                <span class="text-slate-700 dark:text-slate-200 font-mono font-medium">{{ stats.connectedClients || 1 }} 客户端</span>
               </div>
             </div>
 
             <button 
               @click="showAllSources = !showAllSources" 
-              class="w-full py-1 text-center text-[11px] text-slate-500 hover:text-blue-600 transition flex items-center justify-center gap-1 border-t border-slate-100 pt-2"
+              class="w-full py-1 text-center text-[11px] text-slate-500 hover:text-blue-600 transition flex items-center justify-center gap-1 border-t border-slate-100 dark:border-slate-800 pt-2"
             >
-              <span>{{ showAllSources ? '收起渠道列表' : '查看 88 渠道延迟明细' }}</span>
-              <i :data-lucide="showAllSources ? 'chevron-up' : 'chevron-down'" class="w-3 h-3"></i>
+              <span>{{ showAllSources ? '收起渠道列表' : `查看 ${totalSourcesCount} 渠道延迟明细` }}</span>
+              <icon :name="showAllSources ? 'chevron-up' : 'chevron-down'" class="w-3 h-3 transition-transform"></icon>
             </button>
 
             <div v-if="showAllSources" class="max-h-56 overflow-y-auto space-y-1 text-xs pt-1">
-              <div v-for="src in stats.sources" :key="src.id" class="flex items-center justify-between p-1.5 rounded bg-slate-50 text-[11px]">
-                <span class="truncate max-w-[150px] text-slate-700">{{ src.name }}</span>
-                <span class="text-slate-400 font-mono">{{ src.latencyMs || 0 }}ms</span>
+              <div v-for="src in stats.sources" :key="src.id" class="flex items-center justify-between p-1.5 rounded bg-slate-50 dark:bg-slate-800 text-[11px]">
+                <div class="flex items-center gap-1.5 truncate max-w-[170px]">
+                  <span :class="src.status === 'online' ? 'bg-emerald-500' : 'bg-amber-500'" class="w-1.5 h-1.5 rounded-full shrink-0"></span>
+                  <span class="truncate text-slate-700 dark:text-slate-300">{{ src.name }}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="text-[10px] text-slate-400">{{ src.itemCount || 0 }}篇</span>
+                  <span class="text-slate-400 font-mono text-[10px]">{{ src.latencyMs || 0 }}ms</span>
+                </div>
               </div>
             </div>
 
@@ -623,15 +640,15 @@
 
     </main>
 
-    <!-- 6. 详情阅读弹窗 (手机端适配抽屉式 Bottom Sheet，桌面端精美居中弹窗) -->
+    <!-- 6. 详情阅读弹窗 (ESC 可关闭，解决 P0-4 跑马灯破图/空摘要) -->
     <div 
       v-if="selectedArticle" 
       class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/70 backdrop-blur-sm transition-opacity"
       @click.self="closeArticle"
     >
-      <div class="bg-white rounded-t-2xl sm:rounded-2xl max-w-2xl w-full max-h-[92vh] sm:max-h-[90vh] overflow-hidden flex flex-col border border-slate-200 shadow-2xl">
+      <div class="bg-white dark:bg-slate-900 rounded-t-2xl sm:rounded-2xl max-w-2xl w-full max-h-[92vh] sm:max-h-[90vh] overflow-hidden flex flex-col border border-slate-200 dark:border-slate-800 shadow-2xl">
         
-        <!-- 弹窗顶部栏 (大触控目标关闭按钮) -->
+        <!-- 弹窗顶部栏 -->
         <div class="relative aspect-video w-full overflow-hidden bg-slate-900 shrink-0">
           <img :src="selectedArticle.image" class="w-full h-full object-cover">
           <div class="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent"></div>
@@ -639,8 +656,9 @@
           <button 
             @click="closeArticle" 
             class="absolute top-3 right-3 z-10 w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center backdrop-blur transition active:scale-95"
+            title="关闭 (Esc)"
           >
-            <i data-lucide="x" class="w-4 h-4"></i>
+            <icon name="x" class="w-4 h-4"></icon>
           </button>
 
           <div class="absolute bottom-2.5 left-3 right-3 flex items-center gap-1.5">
@@ -651,42 +669,42 @@
 
         <!-- 弹窗正文内容滚动区 -->
         <div class="p-4 sm:p-5 overflow-y-auto space-y-3 flex-1">
-          <h2 class="text-base sm:text-xl font-bold text-slate-900 leading-snug">
+          <h2 class="text-base sm:text-xl font-bold text-slate-900 dark:text-slate-100 leading-snug">
             {{ selectedArticle.title }}
           </h2>
 
-          <div class="flex items-center gap-2 text-[11px] text-slate-400 pb-2 border-b border-slate-100 flex-wrap">
+          <div class="flex items-center gap-2 text-[11px] text-slate-400 pb-2 border-b border-slate-100 dark:border-slate-800 flex-wrap">
             <span>{{ formatFullTime(selectedArticle.pubDate) }}</span>
             <span>•</span>
             <span>{{ timeAgo(selectedArticle.pubDate) }}</span>
             <span>•</span>
-            <span class="font-semibold text-slate-700">来源: {{ selectedArticle.source }}</span>
+            <span class="font-semibold text-slate-700 dark:text-slate-300">来源: {{ selectedArticle.source }}</span>
           </div>
 
-          <div class="bg-blue-50/60 border border-blue-100 rounded-xl p-3 sm:p-3.5 space-y-1.5">
-            <div class="flex items-center gap-1.5 text-xs font-bold text-blue-700">
-              <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+          <div class="bg-blue-50/60 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900 rounded-xl p-3 sm:p-3.5 space-y-1.5">
+            <div class="flex items-center gap-1.5 text-xs font-bold text-blue-700 dark:text-blue-300">
+              <icon name="sparkles" class="w-3.5 h-3.5"></icon>
               <span>核心要点速览 (AI Summary)</span>
             </div>
-            <p class="text-xs sm:text-sm text-slate-700 leading-relaxed">
+            <p class="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-line">
               {{ selectedArticle.summary || selectedArticle.content }}
             </p>
           </div>
 
           <div class="flex items-center gap-1.5 flex-wrap pt-0.5">
-            <span v-for="tag in selectedArticle.tags" :key="tag" class="text-[10px] sm:text-[11px] px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-medium">
+            <span v-for="tag in selectedArticle.tags" :key="tag" class="text-[10px] sm:text-[11px] px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium">
               #{{ tag }}
             </span>
           </div>
         </div>
 
-        <!-- 手机端与桌面端底部固定操作栏 (吸底按钮，触手可及) -->
-        <div class="p-3 sm:p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-2.5 shrink-0">
+        <!-- 底部固定操作栏 -->
+        <div class="p-3 sm:p-4 bg-slate-50 dark:bg-slate-850 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2.5 shrink-0">
           <button 
             @click="copyLink(selectedArticle.link)" 
-            class="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 text-xs font-medium transition active:scale-95"
+            class="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 text-xs font-medium transition active:scale-95"
           >
-            <i data-lucide="share-2" class="w-3.5 h-3.5"></i>
+            <icon name="share-2" class="w-3.5 h-3.5"></icon>
             <span>复制链接</span>
           </button>
           <a 
@@ -695,26 +713,26 @@
             class="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-2xs transition active:scale-95"
           >
             <span>直达【{{ selectedArticle.source }}】原文报道</span>
-            <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+            <icon name="external-link" class="w-3.5 h-3.5"></icon>
           </a>
         </div>
 
       </div>
     </div>
 
-    <!-- 7. 全局 Toast 提示通知 (手机端顶部居中，桌面端右下角) -->
+    <!-- 7. 全局 Toast 提示通知 -->
     <transition enter-active-class="transform ease-out duration-300 transition" enter-from-class="-translate-y-4 sm:translate-y-4 opacity-0" enter-to-class="translate-y-0 opacity-100" leave-active-class="transition ease-in duration-200" leave-from-class="opacity-100" leave-to-class="opacity-0">
       <div v-if="toast.show" class="fixed top-4 left-3 right-3 sm:top-auto sm:bottom-5 sm:left-auto sm:right-5 z-50 max-w-sm mx-auto bg-slate-900 text-white px-3.5 py-2.5 rounded-xl shadow-xl flex items-center gap-2.5">
-        <i data-lucide="bell" class="w-4 h-4 text-blue-400 shrink-0"></i>
+        <icon name="bell" class="w-4 h-4 text-blue-400 shrink-0"></icon>
         <span class="text-xs font-medium">{{ toast.message }}</span>
       </div>
     </transition>
 
     <!-- 8. 页脚 (Footer) -->
-    <footer class="mt-auto border-t border-slate-200/80 bg-white py-4 sm:py-5 text-xs text-slate-400">
+    <footer class="mt-auto border-t border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 py-4 sm:py-5 text-xs text-slate-400">
       <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2.5">
         <div class="flex items-center gap-2">
-          <span class="font-bold text-slate-800">NEXUS PULSE 智讯枢纽</span>
+          <span class="font-bold text-slate-800 dark:text-slate-200">NEXUS PULSE 智讯枢纽</span>
           <span>© 2026 全网权威实时资讯矩阵</span>
         </div>
         <div class="flex items-center gap-2 flex-wrap text-slate-400 text-[10px] sm:text-[11px] justify-center">
