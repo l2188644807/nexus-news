@@ -20,6 +20,65 @@ const GHOST_SOURCE_MAPPING = {
 };
 
 /**
+ * 解决 D3: 统一文章新鲜度校验 (必须在 365 天以内，两处共用)
+ */
+function isFresh(item) {
+  if (!item) return false;
+  const ts = item.timestamp || (item.pubDate ? new Date(item.pubDate).getTime() : 0);
+  if (!ts || isNaN(ts)) return true;
+  const oneYearAgo = Date.now() - 365 * 86400 * 1000;
+  return ts >= oneYearAgo;
+}
+
+/**
+ * 解决 D2: 清洗抓取型来源的标题 (去除虎扑阅读数、回复量等尾部粘连内容)
+ */
+function cleanScrapedTitle(rawTitle, sourceId) {
+  if (!rawTitle || typeof rawTitle !== 'string') return '';
+  let t = rawTitle.replace(/\s+/g, ' ').trim();
+  if (sourceId === 'hupu' || (sourceId && sourceId.includes('hupu'))) {
+    t = t.replace(/\s*\d{3,}\s*(?:英雄联盟|篮球资讯|中国足球|国际足球资讯|足球话题区|独行侠专区|湖人专区|勇士专区|数码区|影视区|车友交流|和平精英|电竞|综合体育|崩坏|王者荣耀|绝地求生|步行街|[^\s\d]{2,6})?$/, '');
+    t = t.replace(/\s*\d+\s*(?:亮|回复|浏览|阅读|人参与).*$/, '');
+  }
+  return t.trim();
+}
+
+/**
+ * 解决 D2: 严格识别过滤抓取型新闻中的非真实新闻条目
+ * 包含：页脚备案号/许可证、调试探针串、机构科室/学院/重点实验室/投资公司、导航/分页/豆列、403权限提示页
+ */
+function isGarbageArticle(title, link = '', sourceId = '') {
+  if (!title || typeof title !== 'string') return true;
+  const clean = title.trim();
+
+  // 1. 过滤页脚备案号、网文许可证、增值电信业务等非新闻条目 (解决 D2 兔玩网等)
+  if (/ICP备|网文\[|增值电信业务|营业执照|备案号|公网安备/i.test(clean)) return true;
+
+  // 2. 过滤调试探针字符串与测试标记 (解决 D2 第一财经等)
+  if (/YCPMARK|YCP\s+probe|\bycp\d+/i.test(clean) || (link && /ycp/i.test(link))) return true;
+
+  // 3. 过滤组织机构/处室/学院/重点实验室/下属企业误当新闻 (解决 D2 天文台等)
+  if (/(?:研究[部室所中心]|重点实验室|投资有限责任公司|管理委员会|工作组|办公室|科学学院|研究所)$/.test(clean)) return true;
+
+  // 4. 过滤分页/导航/提示页/合集占位符 (解决 D1 NGA, D2 豆瓣电影)
+  if (/^(?:首页|上一页|下一页|末页|前页|后页|查看权限|查看权限\/登录|登录|注册|更多|条当前第|第\s*\d+\s*页)/.test(clean)) return true;
+  if (/\(\s*\d+\s*\/\s*\d+\s*\)/.test(clean)) return true;
+  if (/全系列$/.test(clean)) return true;
+
+  // 5. 链接特征校验
+  if (link) {
+    const l = link.toLowerCase();
+    if (l.includes('beian.miit.gov.cn') || l.includes('beian.gov.cn')) return true;
+    if (/\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(l)) return true;
+    if (l.includes('view_privilege') || l.includes('nuke.php')) return true;
+    if (l.includes('/jgsz') || l.includes('/tzqy/')) return true;
+    if (sourceId === 'douban_movie' && l.includes('/doulist/')) return true;
+  }
+
+  return false;
+}
+
+/**
  * 校验标题是否合规，杜绝 "- The New York Times" 等残缺空前缀卡片或网站描述 (解决 C3)
  */
 function isValidArticleTitle(title) {
@@ -84,15 +143,17 @@ class NewsStorage {
         const raw = fs.readFileSync(this.dataFile, 'utf-8');
         const list = JSON.parse(raw);
         if (Array.isArray(list) && list.length > 0) {
-          const oneYearAgo = Date.now() - 365 * 86400 * 1000;
-
           list.forEach(a => {
             if (!a || !a.id || a.id.startsWith('seed-') || a.id.startsWith('s16-')) return;
             if (!a.title || !a.link || !a.link.startsWith('http')) return;
             if (a.link === 'https://lolesports.com/' || a.link === 'https://www.wanplus.com/' || a.link === 'https://www.bilibili.com/') return;
 
-            // 过滤超过 1 年前的过时陈旧文章 (如 2006 年老旧条目)
-            if (a.timestamp && a.timestamp < oneYearAgo) return;
+            // 解决 D3: 过滤超过 1 年前的过时陈旧文章 (如 2006 年老旧条目)
+            if (!isFresh(a)) return;
+
+            // 解决 D2: 清洗存量抓取标题并排除垃圾 (ICP/科室/探针/分页/403)
+            a.title = cleanScrapedTitle(a.title, a.sourceId);
+            if (isGarbageArticle(a.title, a.link, a.sourceId)) return;
 
             // 解决 C3: 严格过滤残缺/空前缀标题
             if (!isValidArticleTitle(a.title)) return;
@@ -210,6 +271,13 @@ class NewsStorage {
       if (item.id.startsWith('seed-') || item.id.startsWith('s16-')) continue;
       if (!item.title || !item.link || !item.link.startsWith('http')) continue;
       if (item.link === 'https://lolesports.com/' || item.link === 'https://www.wanplus.com/' || item.link === 'https://www.bilibili.com/') continue;
+
+      // 解决 D3: 严格校验新鲜度 (防抓取将老旧文章再次注入)
+      if (!isFresh(item)) continue;
+
+      // 解决 D2: 清洗标题并严格过滤垃圾 (ICP/科室/探针/分页/403)
+      item.title = cleanScrapedTitle(item.title, item.sourceId);
+      if (isGarbageArticle(item.title, item.link, item.sourceId)) continue;
 
       // 解决 C3: 严格校验标题完整性
       if (!isValidArticleTitle(item.title)) continue;
@@ -400,4 +468,10 @@ class NewsStorage {
   }
 }
 
-module.exports = new NewsStorage();
+const instance = new NewsStorage();
+instance.isFresh = isFresh;
+instance.isGarbageArticle = isGarbageArticle;
+instance.cleanScrapedTitle = cleanScrapedTitle;
+instance.isValidArticleTitle = isValidArticleTitle;
+
+module.exports = instance;

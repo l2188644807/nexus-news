@@ -190,7 +190,7 @@ const app = createApp({
     const forceRefresh = async () => {
       if (isRefreshing.value) return;
       isRefreshing.value = true;
-      showToast('正在向全网 88 个权威媒体与空间天文机构发起并发采集...', 'info');
+      showToast(`正在向全网 ${totalSourcesCount.value} 个权威媒体与空间天文机构发起并发采集...`, 'info');
 
       try {
         const res = await fetch('/api/news/refresh', { method: 'POST' });
@@ -417,7 +417,7 @@ const app = createApp({
     });
 
     const totalSourcesCount = computed(() => {
-      return (stats.value.sources || []).length || 88;
+      return (stats.value.sources || []).length || 79;
     });
 
     const isAllChannelsOnline = computed(() => {

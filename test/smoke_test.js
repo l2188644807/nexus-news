@@ -98,7 +98,7 @@ async function runTests() {
     const firstNews = newsRes.body.data && newsRes.body.data.items && newsRes.body.data.items[0];
     assert(
       firstNews && firstNews.content === undefined,
-      'C7: /api/news 移除沉重 content 字段，单次网络响应减少约 80%'
+      'C7: /api/news 移除沉重 content 字段，响应体体积显著精简 (~29%)'
     );
 
     // 6. 验证 C3: 过滤残缺空标题 (如 "- The New York Times")
@@ -129,7 +129,7 @@ async function runTests() {
       'R7: /api/stats 返回真实推流客户端数'
     );
 
-    // 9. 验证 R1: 彻底清理旧幽灵源
+    // 9. 验证 R1 & D4: 彻底清理旧幽灵源与死链源
     const validSourceIds = new Set(SOURCES.map(s => s.id));
     let ghostCount = 0;
     for (const a of storage.articles.values()) {
@@ -137,7 +137,7 @@ async function runTests() {
     }
     assert(
       ghostCount === 0,
-      'R1: 旧幽灵源文章清理完毕，在库文章 100% 隶属 88 官方信标源'
+      'R1 & D4: 旧幽灵源与失效死链源清理完毕，在库文章 100% 隶属 79 官方信标源'
     );
 
     // 10. 验证 C2: 行业分类白名单防止跨行业标签误标
@@ -157,17 +157,18 @@ async function runTests() {
       'C2: 分类白名单生效，无 fast break/switch/steam/s16 跨界误标'
     );
 
-    // 11. 验证 C8: 安全响应头规范
+    // 11. 验证 C8 & D5: 安全响应头规范与 HSTS 就绪
     const headers = limitNegRes.headers;
     const hasSecurityHeaders = (
       headers['x-content-type-options'] === 'nosniff' &&
       headers['x-frame-options'] === 'SAMEORIGIN' &&
       headers['referrer-policy'] === 'strict-origin-when-cross-origin' &&
+      headers['strict-transport-security'] &&
       headers['x-powered-by'] === undefined
     );
     assert(
       hasSecurityHeaders,
-      'C8: X-Content-Type-Options、X-Frame-Options、Referrer-Policy 安全响应头就绪'
+      'C8 & D5: X-Content-Type-Options、X-Frame-Options、Referrer-Policy、HSTS 安全响应头就绪'
     );
 
     // 12. 验证 R12: 存量图片协议安全
@@ -178,6 +179,44 @@ async function runTests() {
     assert(
       httpImgCount === 0,
       'R12: 全库文章配图 100% 具备 HTTPS 协议'
+    );
+
+    // 13. 验证 D2: 垃圾爬取条目拦截 (无备案号、无科室机构名、无探针测试串、无 403 页面)
+    let garbageCount = 0;
+    for (const a of storage.articles.values()) {
+      if (storage.isGarbageArticle && storage.isGarbageArticle(a.title, a.link, a.sourceId)) {
+        garbageCount++;
+      }
+    }
+    assert(
+      garbageCount === 0,
+      'D2: 抓取黑名单生效，全库 0 篇备案号、科室名、调试探针或 403 权限页'
+    );
+
+    // 14. 验证 D3: 文章新鲜度全量在 365 天以内
+    let staleCount = 0;
+    const oneYearAgo = Date.now() - 365 * 86400 * 1000;
+    for (const a of storage.articles.values()) {
+      if (a.timestamp && a.timestamp < oneYearAgo) staleCount++;
+    }
+    assert(
+      staleCount === 0,
+      'D3: 严格 1 年新鲜度双重守卫生效，在库文章 100% 具备时效性'
+    );
+
+    // 15. 验证 D5: 前端页面 CSP 强化与 API 路径轻量化
+    const htmlPageRes = await get('/');
+    const htmlCsp = htmlPageRes.headers['content-security-policy'] || '';
+    const apiCsp = limitNegRes.headers['content-security-policy'];
+    const cspHardened = (
+      htmlCsp.includes("base-uri 'self'") &&
+      htmlCsp.includes("object-src 'none'") &&
+      htmlCsp.includes("form-action 'self'") &&
+      apiCsp === undefined
+    );
+    assert(
+      cspHardened,
+      'D5: HTML 页面 CSP 强化 (包含 base-uri, object-src, form-action) 且 API 接口无冗余 CSP'
     );
 
     console.log(`\n========================================`);

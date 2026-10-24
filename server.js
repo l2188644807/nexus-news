@@ -16,22 +16,30 @@ const PORT = process.env.PORT || 3000;
 app.disable('x-powered-by');
 app.use(compression());
 
-// 解决 C8: 补充完整安全响应头 (防 MIME 嗅探、点击劫持，并允许 Vue 3 浏览器端编译及 CDN)
+// 解决 C8 & D5: 补充完整安全响应头 (防 MIME 嗅探、点击劫持、跨域策略与 HSTS 加固)
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-  res.setHeader(
-    'Content-Security-Policy',
-    "default-src 'self' 'unsafe-inline' https:; " +
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://unpkg.com; " +
-    "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; " +
-    "img-src * data: blob: https: http:; " +
-    "connect-src *; " +
-    "font-src 'self' data: https:; " +
-    "frame-ancestors 'self';"
-  );
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+
+  // D5: 仅在前端页面与资源请求上附加 CSP，避免对 /api/* 产生无意义开销
+  if (!req.path.startsWith('/api')) {
+    res.setHeader(
+      'Content-Security-Policy',
+      "default-src 'self' 'unsafe-inline' https:; " +
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://unpkg.com; " +
+      "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; " +
+      "img-src * data: blob: https: http:; " +
+      "connect-src *; " +
+      "font-src 'self' data: https:; " +
+      "object-src 'none'; " +
+      "base-uri 'self'; " +
+      "form-action 'self'; " +
+      "frame-ancestors 'self';"
+    );
+  }
   next();
 });
 

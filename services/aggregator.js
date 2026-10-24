@@ -168,6 +168,8 @@ class HybridAggregator {
       },
       signal: AbortSignal.timeout(9000)
     });
+    // 解决 D1: 校验 HTTP 响应状态，避免 403 权限提示页被当做正常新闻解析入库
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const html = await res.text();
     const $ = cheerio.load(html);
 
@@ -175,11 +177,19 @@ class HybridAggregator {
     const seenTitles = new Set();
 
     $('a').each((i, el) => {
-      const title = $(el).text().replace(/\s+/g, ' ').trim();
+      let rawTitle = $(el).text();
       let href = $(el).attr('href');
 
       if (!href || href.startsWith('javascript') || href === '#') return;
+
+      // 解决 D2: 清洗标题 (去除虎扑尾部粘连阅读数等)
+      const title = storage.cleanScrapedTitle ? storage.cleanScrapedTitle(rawTitle, source.id) : rawTitle.replace(/\s+/g, ' ').trim();
       if (title.length < 12 || title.length > 65) return;
+
+      // 解决 D2: 严格过滤备案号、机构科室、调试探针、豆列合集等垃圾条目
+      if (storage.isGarbageArticle && storage.isGarbageArticle(title, href, source.id)) return;
+      if (storage.isValidArticleTitle && !storage.isValidArticleTitle(title)) return;
+
       if (seenTitles.has(title)) return;
       seenTitles.add(title);
 

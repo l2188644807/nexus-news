@@ -718,7 +718,7 @@
             class="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-sm transition active:scale-95"
           >
             <span v-if="selectedArticle.link && selectedArticle.link.includes('news.google.com')">
-              直达【{{ selectedArticle.source }}】报道全文 (官方转引)
+              直达【{{ selectedArticle.source }}】(经 Google 新闻聚合跳转)
             </span>
             <span v-else>
               直达【{{ selectedArticle.source }}】原文报道
