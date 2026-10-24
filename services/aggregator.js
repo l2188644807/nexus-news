@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const { SOURCES } = require('./sources');
 const storage = require('./storage');
 const sseManager = require('./sseManager');
+const { deriveTags } = require('./tagger');
 
 const parser = new Parser({
   timeout: 10000,
@@ -21,7 +22,7 @@ const parser = new Parser({
   }
 });
 
-// 各模块主题高质量摄影图库兜底 (强制全量采用 HTTPS)
+// 各模块主题高质量摄影图库兜底 (强制全量采用 HTTPS，严格按各垂直板块分类)
 const CATEGORY_DEFAULT_IMAGES = {
   astronomy: [
     'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=600&auto=format&fit=crop&q=80',
@@ -104,7 +105,7 @@ function extractFirstImage(html) {
   if (!html) return null;
   try {
     const $ = cheerio.load(html);
-    const src = $('img').first().attr('src');
+    const src = $('img').first().attr('src') || $('image').first().attr('src');
     return normalizeImageUrl(src);
   } catch (err) {}
   return null;
@@ -122,68 +123,6 @@ function stripHtml(html, maxLength = 190) {
   } catch (e) {
     return (html || '').replace(/<[^>]+>/g, '').trim().substring(0, maxLength);
   }
-}
-
-/**
- * 单词边界匹配，规避短词误伤 (解决 UFC 出现 'Main Card' 被贴 #AI前沿、F1 出现 'major' 被贴 #CS2 等问题)
- */
-function matchesKey(text, key) {
-  if (!key) return false;
-  // 中文字符串直接包含匹配
-  if (/[\u4e00-\u9fa5]/.test(key)) {
-    return text.includes(key);
-  }
-  // 英文/字母缩写采用严格词边界 \b
-  const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const reg = new RegExp(`\\b${escaped}\\b`, 'i');
-  return reg.test(text);
-}
-
-function deriveTags(title, summary, source) {
-  const text = (title + ' ' + summary).toLowerCase();
-  const tags = new Set();
-
-  if (source.badge) tags.add(source.badge);
-
-  const keywordsMap = [
-    // 天文学
-    { tag: 'FAST天眼', keys: ['fast', '中国天眼', '脉冲星', '射电望远镜'] },
-    { tag: '韦伯空间望远镜', keys: ['jwst', 'webb', '韦伯望远镜', '原星系'] },
-    { tag: '欧空局ESA', keys: ['esa', '欧空局', '欧几里得', '盖亚'] },
-    { tag: '系外行星', keys: ['exoplanet', '系外行星', '超级地球', '宜居带'] },
-    { tag: '引力波与黑洞', keys: ['black hole', '黑洞', '引力波', 'gravitational wave'] },
-    { tag: '深空探测', keys: ['nasa', '深空', '深空测轨', '行星探测', '小行星', '彗星'] },
-    // 电竞 (修正 major -> cs2 major，避免普通英文 major 误伤)
-    { tag: 'CS2', keys: ['cs2', 'counter-strike', 'hltv', 'cs2 major', 'cs major', 'navi', 'faze', 's1mple', 'zywoo'] },
-    { tag: '英雄联盟', keys: ['lol', 'league of legends', 'lpl', 'lck', 'faker', 's14', 's15', 's16', '全球总决赛'] },
-    { tag: '无畏契约', keys: ['valorant', 'vct', '无畏契约', '瓦罗兰特'] },
-    // 游戏
-    { tag: '3A大作', keys: ['steam', 'ps5', 'xbox', 'switch', 'gta', '黑神话', '卡普空', '育碧', '任天堂'] },
-    // 国际政经
-    { tag: '国际政经', keys: ['联合国', '气候峰会', '总统', '首脑峰会', '外长会谈'] },
-    // 体育
-    { tag: '欧冠足球', keys: ['欧冠', '英超', '西甲', '德甲', '意甲', '国足', '世界杯'] },
-    { tag: 'NBA体坛', keys: ['nba', '篮球', '詹姆斯', '勇士', '湖人', '凯尔特人'] },
-    // 军事
-    { tag: '军工防务', keys: ['防务', '隐身战机', '无人机', '航空母舰', '驱逐舰', '高超音速', '军演'] },
-    // 教育
-    { tag: '招考研招', keys: ['考研', '高考', '高校', '大学招生', '教育部'] },
-    // 娱乐与影视
-    { tag: '文娱独家', keys: ['明星', '演员', '恋情', '首谈', '家庭', '热搜'] },
-    { tag: '院线大片', keys: ['电影', '上映', '票房', '影评', '定档', '好莱坞', 'imax'] },
-    // 财经
-    { tag: '宏观金融', keys: ['股市', '央行', '降息', '加息', '美元汇率', '贸易顺差', '通胀率', 'a股', '港股', '美股'] },
-    // 科技 (严格限定 ai 边界与关键实体)
-    { tag: 'AI前沿', keys: ['ai', '大模型', 'gpt', 'openai', '生成式ai', '芯片', '算力', 'deepseek', 'anthropic', 'llm'] }
-  ];
-
-  for (const item of keywordsMap) {
-    if (item.keys.some(k => matchesKey(text, k))) {
-      tags.add(item.tag);
-    }
-  }
-
-  return Array.from(tags).slice(0, 4);
 }
 
 class HybridAggregator {
@@ -207,7 +146,6 @@ class HybridAggregator {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     let xml = await res.text();
 
-    // 修复不规范 XML/CDATA
     xml = xml.replace(/&(?!(amp|lt|gt|quot|apos|#\d+|#x[0-9a-fA-F]+);)/g, '&amp;');
     xml = xml.replace(/<description>([\s\S]*?)<\/description>/gi, (match, content) => {
       if (content.includes('<![CDATA[')) return match;
@@ -253,7 +191,6 @@ class HybridAggregator {
         }
       }
 
-      // 保持已有文章真实时间戳，防止每次爬取被合成时间顶到最前 (解决 P1-9)
       const hashId = crypto.createHash('md5').update(href).digest('hex').substring(0, 16);
       const articleId = `${source.id}-${hashId}`;
       const existing = storage.articles.get(articleId);
@@ -366,7 +303,6 @@ class HybridAggregator {
         const articleId = `douyin-${hashId}`;
         const image = douyinCovers[idx % douyinCovers.length];
 
-        // 保持已有热榜词首次记录的时间戳，避免每次刷新顶掉正常新闻
         const existing = storage.articles.get(articleId);
         const timestamp = existing ? existing.timestamp : (Date.now() - idx * 2 * 60 * 1000);
         const pubDate = existing ? existing.pubDate : new Date(timestamp).toISOString();
@@ -397,50 +333,52 @@ class HybridAggregator {
   }
 
   formatItem(raw, source) {
-    const uniqueKey = raw.link || raw.guid || raw.title;
+    // 解决 R5: 第一时间提供 title 兜底与 uniqueKey 空值保护，杜绝一条无标题毁掉整个 feed
+    const title = (raw && raw.title ? String(raw.title) : '最新资讯').trim();
+    const uniqueKey = (raw && (raw.link || raw.guid)) || title || (`${source.id}-${Date.now()}-${Math.random()}`);
     const hashId = crypto.createHash('md5').update(uniqueKey).digest('hex').substring(0, 16);
     const articleId = `${source.id}-${hashId}`;
 
     let image = null;
-    if (raw.enclosure && raw.enclosure.url) {
+    if (raw && raw.enclosure && raw.enclosure.url) {
       image = normalizeImageUrl(raw.enclosure.url);
-    } else if (raw.mediaContent && raw.mediaContent.$ && raw.mediaContent.$.url) {
+    } else if (raw && raw.mediaContent && raw.mediaContent.$ && raw.mediaContent.$.url) {
       image = normalizeImageUrl(raw.mediaContent.$.url);
-    } else if (raw.mediaThumbnail && raw.mediaThumbnail.$ && raw.mediaThumbnail.$.url) {
+    } else if (raw && raw.mediaThumbnail && raw.mediaThumbnail.$ && raw.mediaThumbnail.$.url) {
       image = normalizeImageUrl(raw.mediaThumbnail.$.url);
-    } else {
+    } else if (raw) {
       image = extractFirstImage(raw['content:encoded'] || raw.content || raw.description);
     }
 
     if (!image) {
-      image = getRandomImage(source.category, raw.title);
+      image = getRandomImage(source.category, title);
     }
 
-    const summary = stripHtml(raw.contentSnippet || raw.summary || raw.description || raw['content:encoded'] || raw.title);
+    const summary = stripHtml((raw && (raw.contentSnippet || raw.summary || raw.description || raw['content:encoded'])) || title);
 
-    let pubDate = raw.isoDate || raw.pubDate;
+    let pubDate = raw && (raw.isoDate || raw.pubDate);
     let timestamp = pubDate ? new Date(pubDate).getTime() : Date.now();
     if (isNaN(timestamp) || timestamp > Date.now() + 86400000) {
       timestamp = Date.now();
     }
 
-    const title = (raw.title || '最新资讯').trim();
+    // 解决 R14: 调用预编译 deriveTags
     const tags = deriveTags(title, summary, source);
-    // isBreaking 由 storage 动态读取评估，这里初始化标记
-    const isBreaking = (Date.now() - timestamp < 3 * 3600000) && (title.includes('重磅') || title.includes('突发') || /breaking/i.test(title));
+    // 解决 R8: 仅突发/重磅且发布于 3 小时内判定为 isBreaking，移除宽泛的“最新”
+    const isBreaking = (Date.now() - timestamp < 3 * 3600000) && (/突发|重磅|Breaking\b/i.test(title));
     const isHot = title.includes('首发') || title.includes('发现') || title.includes('突破') || title.includes('特惠') || isBreaking;
 
     return {
       id: articleId,
       title,
       summary,
-      content: raw['content:encoded'] || raw.content || summary,
-      link: raw.link || source.url,
+      content: (raw && (raw['content:encoded'] || raw.content)) || summary,
+      link: (raw && raw.link) || source.url,
       sourceId: source.id,
       source: source.name,
       category: source.category,
       categoryLabel: source.categoryLabel,
-      author: raw.creator || raw.author || source.name,
+      author: (raw && (raw.creator || raw.author)) || source.name,
       pubDate: new Date(timestamp).toISOString(),
       timestamp,
       image,
@@ -467,11 +405,12 @@ class HybridAggregator {
       }
 
       const latency = Date.now() - startTime;
+      // 解决 R6: items=0 标 empty
       storage.updateSourceStatus(source.id, {
         id: source.id,
         name: source.name,
         category: source.category,
-        status: items.length > 0 ? 'online' : 'online',
+        status: items.length > 0 ? 'online' : 'empty',
         latencyMs: latency,
         itemCount: items.length,
         error: null
@@ -530,7 +469,7 @@ class HybridAggregator {
         });
 
         sseManager.broadcast('ticker_update', storage.getTicker());
-        sseManager.broadcast('stats_update', storage.getStats());
+        sseManager.broadcast('stats_update', storage.getStats(sseManager.clients.size));
       }
 
       return {

@@ -29,7 +29,7 @@ const app = createApp({
       lastUpdateTime: null,
       topTags: [],
       sources: [],
-      connectedClients: 1
+      connectedClients: 0
     });
 
     const currentCategory = ref('all');
@@ -158,7 +158,7 @@ const app = createApp({
           stats.value = {
             ...stats.value,
             ...data.data,
-            connectedClients: data.data.connectedClients || stats.value.connectedClients || 1
+            connectedClients: data.data.connectedClients !== undefined ? data.data.connectedClients : stats.value.connectedClients
           };
           sourcesList.value = data.data.sources || [];
         }
@@ -195,14 +195,20 @@ const app = createApp({
       try {
         const res = await fetch('/api/news/refresh', { method: 'POST' });
         const data = await res.json();
-        if (data.success) {
+        if (res.status === 409 || (data.skipped && res.status !== 429)) {
+          showToast('全网资讯并发采集正在后台进行中，数据即将自动同步...', 'info');
+          await fetchNews();
+          await fetchTicker();
+          await fetchStats();
+          await fetchSpotlights();
+        } else if (res.status === 429) {
+          showToast(data.error || '刷新过于频繁，请稍候片刻再试（15秒冷却）', 'warning');
+        } else if (data.success) {
           showToast(`采集完成！${data.message}`, 'success');
           await fetchNews(true);
           await fetchTicker();
           await fetchStats();
           await fetchSpotlights();
-        } else if (res.status === 409 || data.skipped) {
-          showToast('采集正在后台运行中，请稍候...', 'info');
         } else {
           showToast(`刷新失败: ${data.error || '请求受限'}`, 'error');
         }

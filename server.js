@@ -70,16 +70,13 @@ app.get('/api/ticker', (req, res) => {
   }
 });
 
-// 4. 获取系统统计与数据源监控 (包含实时在线客户端数)
+// 4. 获取系统统计与数据源监控 (包含真实在线客户端数，解决 R7)
 app.get('/api/stats', (req, res) => {
   try {
-    const stats = storage.getStats();
+    const stats = storage.getStats(sseManager.getClientCount());
     res.json({
       success: true,
-      data: {
-        ...stats,
-        connectedClients: Math.max(1, sseManager.getClientCount())
-      }
+      data: stats
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -96,12 +93,12 @@ let lastManualRefreshTime = 0;
 
 app.post('/api/news/refresh', async (req, res) => {
   const now = Date.now();
-  // 30 秒频控防恶意连击
+  // 15 秒频控防恶意连击
   if (now - lastManualRefreshTime < 15000) {
     return res.status(429).json({
       success: false,
       skipped: true,
-      message: '抓取刷新过于频繁，请稍候片刻再试'
+      error: '刷新过于频繁，请稍候片刻再试（15秒冷却）'
     });
   }
 
@@ -140,38 +137,46 @@ const crawlJob = cron.schedule('*/5 * * * *', async () => {
 });
 
 // 启动服务器
-const server = app.listen(PORT, () => {
-  console.log(`====================================================`);
-  console.log(`🚀 智讯枢纽 (NEXUS PULSE) 实时资讯聚合系统已启动`);
-  console.log(`🌐 访问地址: http://localhost:${PORT}`);
-  console.log(`📡 覆盖模块: 11 大核心专业板块 (100% 真实数据流)`);
-  console.log(`====================================================`);
+let server = null;
 
-  // 服务启动 2 秒后，自动触发首次抓取更新
-  setTimeout(() => {
-    aggregator.runAggregation().catch(err => {
-      console.warn('Initial crawl notice:', err.message);
-    });
-  }, 2000);
-});
+if (require.main === module) {
+  server = app.listen(PORT, () => {
+    console.log(`====================================================`);
+    console.log(`🚀 智讯枢纽 (NEXUS PULSE) 实时资讯聚合系统已启动`);
+    console.log(`🌐 访问地址: http://localhost:${PORT}`);
+    console.log(`📡 覆盖模块: 11 大核心专业板块 (100% 真实数据流)`);
+    console.log(`====================================================`);
 
-// 优雅关闭：断开 SSE 连接、销毁定时器并关闭 HTTP 监听
-const shutdown = () => {
-  console.log('[System] Gracefully shutting down server...');
-  if (crawlJob) crawlJob.stop();
-  sseManager.closeAll();
-  server.close(() => {
-    console.log('[System] HTTP server closed cleanly.');
-    process.exit(0);
+    // 服务启动 2 秒后，自动触发首次抓取更新
+    setTimeout(() => {
+      aggregator.runAggregation().catch(err => {
+        console.warn('Initial crawl notice:', err.message);
+      });
+    }, 2000);
   });
-  // 5秒强制退出保护
-  setTimeout(() => {
-    console.error('[System] Forced exit due to timeout.');
-    process.exit(1);
-  }, 5000).unref();
-};
 
-process.on('SIGINT', shutdown);
-process.on('SIGTERM', shutdown);
+  // 优雅关闭：断开 SSE 连接、销毁定时器并关闭 HTTP 监听
+  const shutdown = () => {
+    console.log('[System] Gracefully shutting down server...');
+    if (crawlJob) crawlJob.stop();
+    sseManager.closeAll();
+    if (server) {
+      server.close(() => {
+        console.log('[System] HTTP server closed cleanly.');
+        process.exit(0);
+      });
+    } else {
+      process.exit(0);
+    }
+    // 5秒强制退出保护
+    setTimeout(() => {
+      console.error('[System] Forced exit due to timeout.');
+      process.exit(1);
+    }, 5000).unref();
+  };
 
-module.exports = { app, server };
+  process.on('SIGINT', shutdown);
+  process.on('SIGTERM', shutdown);
+}
+
+module.exports = { app, get server() { return server; } };

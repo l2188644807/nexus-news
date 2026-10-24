@@ -1,22 +1,33 @@
 const fs = require('fs');
 const path = require('path');
 const { SOURCES, CATEGORIES } = require('./sources');
+const { deriveTags } = require('./tagger');
 
 const DATA_DIR = path.join(__dirname, '..', 'data');
 const DATA_FILE = path.join(DATA_DIR, 'news_cache.json');
 
 const VALID_CATEGORY_IDS = new Set(CATEGORIES.map(c => c.id).filter(id => id !== 'all'));
+const SOURCES_MAP = new Map(SOURCES.map(s => [s.id, s]));
+
+// 历史细微 ID 差异自动对齐映射
+const GHOST_SOURCE_MAPPING = {
+  'esports_insider': 'esportsinsider',
+  'variety_film': 'variety_ent',
+  'hollywood_reporter': 'thr_ent',
+  'bbc_world': 'bbc_news',
+  'bbc_business': 'bbc_news'
+};
 
 /**
- * 动态判断文章是否处于真正 LIVE 突发状态 (仅限 3 小时内的重磅新闻)
+ * 动态判断文章是否处于真正 LIVE 突发状态 (仅限 3 小时内的突发/重磅新闻，避免“最新”误伤)
  */
 function isTrulyBreaking(item) {
   if (!item) return false;
   const ageMs = Date.now() - (item.timestamp || new Date(item.pubDate).getTime());
   if (ageMs < 0 || ageMs > 3 * 3600 * 1000) return false;
   return Boolean(
-    item.isBreaking || 
-    (item.title && (item.title.includes('重磅') || item.title.includes('突发') || item.title.includes('最新')))
+    item.isBreaking === true || 
+    (item.title && (/突发|重磅|Breaking\b/i.test(item.title)))
   );
 }
 
@@ -43,23 +54,44 @@ class NewsStorage {
         const list = JSON.parse(raw);
         if (Array.isArray(list) && list.length > 0) {
           list.forEach(a => {
-            // 严格过滤：剔除假种子、孤儿分类 (news) 以及无效链接
             if (!a || !a.id || a.id.startsWith('seed-') || a.id.startsWith('s16-')) return;
             if (!a.title || !a.link || !a.link.startsWith('http')) return;
             if (a.link === 'https://lolesports.com/' || a.link === 'https://www.wanplus.com/' || a.link === 'https://www.bilibili.com/') return;
-            
-            // 修复孤儿分类：确保必须属于 11 大合法板块之一
-            if (!VALID_CATEGORY_IDS.has(a.category)) {
-              if (a.source && (a.source.includes('IT之家') || a.source.includes('少数派'))) {
-                a.category = 'tech';
-                a.categoryLabel = '科技前沿';
-              } else if (a.source && (a.source.includes('界面') || a.source.includes('澎湃') || a.source.includes('新京报'))) {
-                a.category = 'world';
-                a.categoryLabel = '全球大事';
-              } else {
-                return; // 无法归属则抛弃
+
+            // 1. 解决 R1: 历史 sourceId 细微差异对齐
+            if (GHOST_SOURCE_MAPPING[a.sourceId]) {
+              a.sourceId = GHOST_SOURCE_MAPPING[a.sourceId];
+            }
+
+            // 检查并仅收录用户明确指定的 88 官方信标源文章，彻底丢弃非指定的 22 个旧幽灵源
+            let sourceMeta = SOURCES_MAP.get(a.sourceId);
+            if (!sourceMeta && a.source) {
+              sourceMeta = SOURCES.find(s => s.name === a.source);
+              if (sourceMeta) {
+                a.sourceId = sourceMeta.id;
               }
             }
+
+            if (!sourceMeta) {
+              return; // 彻底丢弃非指定的旧幽灵源文章 (解决 R1)
+            }
+
+            // 校准分类
+            a.category = sourceMeta.category;
+            a.categoryLabel = sourceMeta.categoryLabel;
+            a.source = sourceMeta.name;
+
+            // 2. 解决 R12: 强制修复存量 http:// 图片为 https://
+            if (a.image && typeof a.image === 'string') {
+              if (a.image.startsWith('http://')) {
+                a.image = 'https://' + a.image.slice(7);
+              } else if (a.image.startsWith('//')) {
+                a.image = 'https:' + a.image;
+              }
+            }
+
+            // 3. 解决 R2: 存量历史文章标签全量用新算法重算回填
+            a.tags = deriveTags(a.title, a.summary, sourceMeta);
 
             this.articles.set(a.id, a);
           });
@@ -70,7 +102,7 @@ class NewsStorage {
       }
     }
 
-    // 初始化全量 88 个权威信标状态
+    // 初始化全量 88 个权威信标状态 (解决 R6: items=0 标 empty)
     if (Array.isArray(SOURCES)) {
       SOURCES.forEach(s => {
         const count = Array.from(this.articles.values()).filter(a => a.sourceId === s.id).length;
@@ -78,7 +110,7 @@ class NewsStorage {
           id: s.id,
           name: s.name,
           category: s.category,
-          status: count > 0 ? 'online' : 'online',
+          status: count > 0 ? 'online' : 'empty',
           latencyMs: 120 + Math.floor(Math.random() * 80),
           itemCount: count,
           error: null
@@ -94,7 +126,6 @@ class NewsStorage {
 
   saveToFile() {
     try {
-      // 保持内存与磁盘严格一致：上限 2500 篇最新资讯
       if (this.articles.size > 2500) {
         const sorted = Array.from(this.articles.values()).sort((a, b) => b.timestamp - a.timestamp);
         const kept = sorted.slice(0, 2500);
@@ -103,7 +134,6 @@ class NewsStorage {
       }
 
       const list = Array.from(this.articles.values()).sort((a, b) => b.timestamp - a.timestamp);
-      // 紧凑压缩落盘（无冗余空白缩进，体积降低 23%）
       fs.writeFileSync(DATA_FILE, JSON.stringify(list), 'utf-8');
     } catch (e) {
       console.error('Failed to persist articles to disk:', e.message);
@@ -118,7 +148,6 @@ class NewsStorage {
       if (!item.title || !item.link || !item.link.startsWith('http')) continue;
       if (item.link === 'https://lolesports.com/' || item.link === 'https://www.wanplus.com/' || item.link === 'https://www.bilibili.com/') continue;
 
-      // 如果已有该文章，保留初次抓取时间戳，不被反复顶到最前
       if (this.articles.has(item.id)) continue;
 
       this.articles.set(item.id, item);
@@ -140,7 +169,6 @@ class NewsStorage {
   }
 
   getNews({ category = 'all', search = '', tag = '', source = '', page = 1, limit = 18 } = {}) {
-    // 严格防御正负与边界溢出
     const p = Math.max(1, parseInt(page, 10) || 1);
     const l = Math.min(Math.max(parseInt(limit, 10) || 18, 1), 50);
 
@@ -176,7 +204,6 @@ class NewsStorage {
     const startIndex = (p - 1) * l;
     const paginated = list.slice(startIndex, startIndex + l).map(item => ({
       ...item,
-      // 动态计算 isBreaking，杜绝数天前新闻挂红标
       isBreaking: isTrulyBreaking(item)
     }));
 
@@ -193,7 +220,6 @@ class NewsStorage {
     const list = Array.from(this.articles.values())
       .sort((a, b) => b.timestamp - a.timestamp);
     
-    // 优先选择真正 3 小时内的重磅与最新新闻
     const breaking = list.filter(item => isTrulyBreaking(item));
     const combined = [...breaking, ...list];
     
@@ -202,12 +228,11 @@ class NewsStorage {
     for (const item of combined) {
       if (!seen.has(item.id)) {
         seen.add(item.id);
-        // 补充完整数据字段，杜绝跑马灯点击弹窗出现破图或空摘要
+        // 去除冗长 content，只保留展示所需字段，跑马灯体积从 16.9KB 回落至 ~8KB (解决 R13)
         result.push({
           id: item.id,
           title: item.title,
           summary: item.summary || item.title,
-          content: item.content || item.summary || item.title,
           category: item.category,
           categoryLabel: item.categoryLabel,
           source: item.source,
@@ -224,7 +249,7 @@ class NewsStorage {
     return result;
   }
 
-  getStats() {
+  getStats(connectedClients = 0) {
     const list = Array.from(this.articles.values());
     const counts = {
       all: list.length,
@@ -263,10 +288,10 @@ class NewsStorage {
       .slice(0, 20)
       .map(([name, count]) => ({ name, count }));
 
-    // 动态校准各渠道在库实际文章数，杜绝虚假/不一致数字
     const sources = Array.from(this.sourcesStatus.values()).map(s => ({
       ...s,
-      itemCount: sourceStoredCounts[s.id] || 0
+      itemCount: sourceStoredCounts[s.id] || 0,
+      status: (sourceStoredCounts[s.id] || 0) > 0 ? (s.status === 'error' ? 'error' : 'online') : 'empty'
     }));
 
     return {
@@ -274,7 +299,8 @@ class NewsStorage {
       categoryCounts: counts,
       lastUpdateTime: this.lastUpdateTime,
       topTags,
-      sources
+      sources,
+      connectedClients: connectedClients || 0
     };
   }
 }
